@@ -1,31 +1,24 @@
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv-safe';
 
-module.exports = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+dotenv.config();
 
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Token não fornecido' });
+export function verifyJWT(req, res, next) {
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ auth: false, message: 'Token não fornecido.' });
   }
 
-  const parts = authHeader.split(' ');
-
-  if (parts.length !== 2) {
-    return res.status(401).json({ error: 'Token erro' });
-  }
-
-  const [scheme, token] = parts;
-
-  if (!/^Bearer$/i.test(scheme)) {
-    return res.status(401).json({ error: 'Token mal formatado' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+  jwt.verify(token, process.env.SECRET, function (err, decoded) {
     if (err) {
-      return res.status(401).json({ error: 'Token inválido' });
+      return res.status(500).json({ 
+        auth: false, 
+        message: 'Falha na autenticação do token.' 
+      });
     }
 
     req.userId = decoded.id;
-    return next();
+    next();
   });
-}; 
+} 

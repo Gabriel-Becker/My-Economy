@@ -1,29 +1,75 @@
-const { Sequelize } = require('sequelize');
-require('dotenv').config();
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    dialect: 'mysql',
-    logging: false,
-    define: {
-      timestamps: true,
-      underscored: true,
-    },
-  }
-);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Teste de conexão
-sequelize
-  .authenticate()
-  .then(() => {
-    console.log('Conexão com o banco de dados estabelecida com sucesso.');
-  })
-  .catch((err) => {
-    console.error('Não foi possível conectar ao banco de dados:', err);
-  });
+// Cria uma conexão com o banco de dados SQLite
+const dbPromise = open({
+  filename: path.join(__dirname, '../../database.sqlite'),
+  driver: sqlite3.Database
+});
 
-module.exports = sequelize; 
+// Função para executar queries
+export async function query(sql, params = []) {
+  const db = await dbPromise;
+  return db.all(sql, params);
+}
+
+// Função para executar uma única query
+export async function queryOne(sql, params = []) {
+  const db = await dbPromise;
+  return db.get(sql, params);
+}
+
+// Função para executar uma query de inserção
+export async function insert(sql, params = []) {
+  const db = await dbPromise;
+  return db.run(sql, params);
+}
+
+// Função para inicializar o banco de dados
+export async function initDatabase() {
+  const db = await dbPromise;
+  
+  // Criar tabela de usuários
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS USUARIOS (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      EMAIL TEXT NOT NULL UNIQUE,
+      SENHA TEXT NOT NULL,
+      NOME TEXT NOT NULL,
+      DT_NASCIMENTO TEXT NOT NULL
+    )
+  `);
+
+  // Criar tabela de despesas
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS DESPESAS (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      DESCRICAO TEXT NOT NULL,
+      VALOR REAL NOT NULL,
+      MES INTEGER NOT NULL,
+      ANO INTEGER NOT NULL,
+      USUARIO_ID INTEGER NOT NULL,
+      ICONE TEXT,
+      FOREIGN KEY (USUARIO_ID) REFERENCES USUARIOS (ID)
+    )
+  `);
+
+  // Criar tabela de limites
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS LIMITES (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      VALOR REAL NOT NULL,
+      MES INTEGER NOT NULL,
+      ANO INTEGER NOT NULL,
+      USUARIO_ID INTEGER NOT NULL,
+      FOREIGN KEY (USUARIO_ID) REFERENCES USUARIOS (ID)
+    )
+  `);
+}
+
+export default dbPromise;
