@@ -41,12 +41,13 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  async function signUp(name, email, password, birthDate) {
+  async function signUp(name, email, password, confirmPassword, birthDate) {
     try {
       const response = await api.post('/users', {
         name,
         email,
         password,
+        confirmPassword,
         birthDate,
       });
 
@@ -87,5 +88,10 @@ export const AuthProvider = ({ children }) => {
 
 export function useAuth() {
   const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+
   return context;
 } 

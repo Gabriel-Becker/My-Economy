@@ -13,17 +13,28 @@ export default function SignUp({ navigation }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const { signUp } = useAuth();
 
   async function handleSignUp() {
     try {
-      if (!name || !email || !password || !birthDate) {
+      if (!name || !email || !password || !confirmPassword || !birthDate) {
         Alert.alert('Erro', 'Preencha todos os campos');
         return;
       }
 
-      await signUp(name, email, password, birthDate);
+      if (password !== confirmPassword) {
+        Alert.alert('Erro', 'As senhas não conferem');
+        return;
+      }
+
+      if (password.length < 6) {
+        Alert.alert('Erro', 'A senha deve ter no mínimo 6 caracteres');
+        return;
+      }
+
+      await signUp(name, email, password, confirmPassword, birthDate);
     } catch (error) {
       Alert.alert('Erro', error.message);
     }
@@ -57,6 +68,14 @@ export default function SignUp({ navigation }) {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Confirmar Senha"
+          secureTextEntry
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
         />
 
         <TextInput

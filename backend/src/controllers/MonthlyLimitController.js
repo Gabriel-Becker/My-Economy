@@ -8,27 +8,25 @@ class MonthlyLimitController {
       const { value, referenceMonth } = req.body;
       const userId = req.userId;
 
-      const currentDate = new Date();
-      const referenceDate = new Date(referenceMonth);
-
-      if (referenceDate < new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)) {
-        return res.status(400).json({ error: 'Não é possível cadastrar limite para meses anteriores' });
+      // Validação dos campos obrigatórios
+      if (!value || !referenceMonth) {
+        return res.status(400).json({ 
+          error: 'Todos os campos são obrigatórios' 
+        });
       }
 
+      // Verifica se já existe um limite para o mês
       const existingLimit = await MonthlyLimit.findOne({
         where: {
           userId,
-          referenceMonth: {
-            [Op.between]: [
-              new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1),
-              new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0),
-            ],
-          },
+          referenceMonth,
         },
       });
 
       if (existingLimit) {
-        return res.status(400).json({ error: 'Já existe um limite cadastrado para este mês' });
+        return res.status(400).json({ 
+          error: 'Já existe um limite cadastrado para este mês' 
+        });
       }
 
       const limit = await MonthlyLimit.create({
@@ -39,7 +37,7 @@ class MonthlyLimitController {
 
       return res.json(limit);
     } catch (error) {
-      return res.status(400).json({ error: 'Falha ao cadastrar limite' });
+      return res.status(400).json({ error: 'Falha ao criar limite' });
     }
   }
 
@@ -101,11 +99,16 @@ class MonthlyLimitController {
         return res.status(404).json({ error: 'Limite não encontrado' });
       }
 
+      // Verifica se o limite é do mês atual ou futuro
       const currentDate = new Date();
-      const referenceDate = new Date(referenceMonth);
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      const [year, month] = limit.referenceMonth.split('-').map(Number);
 
-      if (referenceDate < new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)) {
-        return res.status(400).json({ error: 'Não é possível editar limite de meses anteriores' });
+      if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        return res.status(400).json({ 
+          error: 'Não é possível editar limites de meses anteriores' 
+        });
       }
 
       await limit.update({
@@ -132,11 +135,16 @@ class MonthlyLimitController {
         return res.status(404).json({ error: 'Limite não encontrado' });
       }
 
+      // Verifica se o limite é do mês atual ou futuro
       const currentDate = new Date();
-      const referenceDate = new Date(limit.referenceMonth);
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      const [year, month] = limit.referenceMonth.split('-').map(Number);
 
-      if (referenceDate < new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)) {
-        return res.status(400).json({ error: 'Não é possível excluir limite de meses anteriores' });
+      if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        return res.status(400).json({ 
+          error: 'Não é possível excluir limites de meses anteriores' 
+        });
       }
 
       await limit.destroy();

@@ -5,7 +5,17 @@ require('dotenv').config();
 class UserController {
   async store(req, res) {
     try {
-      const { name, email, password, birthDate } = req.body;
+      const { name, email, password, confirmPassword, birthDate } = req.body;
+
+      // Validação de senha
+      if (!password || password.length < 6) {
+        return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres' });
+      }
+
+      // Validação de confirmação de senha
+      if (password !== confirmPassword) {
+        return res.status(400).json({ error: 'As senhas não conferem' });
+      }
 
       const userExists = await User.findOne({ where: { email } });
 

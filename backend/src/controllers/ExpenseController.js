@@ -7,11 +7,11 @@ class ExpenseController {
       const { description, value, referenceMonth } = req.body;
       const userId = req.userId;
 
-      const currentDate = new Date();
-      const referenceDate = new Date(referenceMonth);
-
-      if (referenceDate < new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)) {
-        return res.status(400).json({ error: 'Não é possível cadastrar despesas para meses anteriores' });
+      // Validação dos campos obrigatórios
+      if (!description || !value || !referenceMonth) {
+        return res.status(400).json({ 
+          error: 'Todos os campos são obrigatórios' 
+        });
       }
 
       const expense = await Expense.create({
@@ -23,24 +23,19 @@ class ExpenseController {
 
       return res.json(expense);
     } catch (error) {
-      return res.status(400).json({ error: 'Falha ao cadastrar despesa' });
+      return res.status(400).json({ error: 'Falha ao criar despesa' });
     }
   }
 
   async index(req, res) {
     try {
-      const { month } = req.query;
+      const { referenceMonth } = req.query;
       const userId = req.userId;
-
-      const startDate = new Date(month);
-      const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
 
       const expenses = await Expense.findAll({
         where: {
           userId,
-          referenceMonth: {
-            [Op.between]: [startDate, endDate],
-          },
+          referenceMonth: referenceMonth || new Date().toISOString().slice(0, 7),
         },
         order: [['createdAt', 'DESC']],
       });
@@ -65,11 +60,16 @@ class ExpenseController {
         return res.status(404).json({ error: 'Despesa não encontrada' });
       }
 
+      // Verifica se a despesa é do mês atual ou futuro
       const currentDate = new Date();
-      const referenceDate = new Date(referenceMonth);
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      const [year, month] = expense.referenceMonth.split('-').map(Number);
 
-      if (referenceDate < new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)) {
-        return res.status(400).json({ error: 'Não é possível editar despesas de meses anteriores' });
+      if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        return res.status(400).json({ 
+          error: 'Não é possível editar despesas de meses anteriores' 
+        });
       }
 
       await expense.update({
@@ -97,11 +97,16 @@ class ExpenseController {
         return res.status(404).json({ error: 'Despesa não encontrada' });
       }
 
+      // Verifica se a despesa é do mês atual ou futuro
       const currentDate = new Date();
-      const referenceDate = new Date(expense.referenceMonth);
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      const [year, month] = expense.referenceMonth.split('-').map(Number);
 
-      if (referenceDate < new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)) {
-        return res.status(400).json({ error: 'Não é possível excluir despesas de meses anteriores' });
+      if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        return res.status(400).json({ 
+          error: 'Não é possível excluir despesas de meses anteriores' 
+        });
       }
 
       await expense.destroy();
