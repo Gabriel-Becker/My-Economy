@@ -12,12 +12,15 @@ router.get('/', (req, res) => {
 });
 
 // Rotas de usuário
-router.post('/usuario', UsuarioController.register);
+router.post('/users', UsuarioController.register);
 router.post('/login', UsuarioController.login);
 router.post('/logout', UsuarioController.logout);
 
 // Rotas protegidas
 router.use(verifyJWT);
+
+// Rotas de usuário protegidas
+router.get('/users', UsuarioController.getProfile);
 
 // Rotas de despesas
 router.post('/despesas', DespesaController.create);

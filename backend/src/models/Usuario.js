@@ -5,8 +5,8 @@ export class Usuario {
     return queryOne('SELECT * FROM USUARIOS WHERE ID = ?', [id]);
   }
 
-  static async findByEmailAndSenha(email, senha) {
-    return queryOne('SELECT * FROM USUARIOS WHERE EMAIL = ? AND SENHA = ?', [email, senha]);
+  static async findByEmail(email) {
+    return queryOne('SELECT * FROM USUARIOS WHERE EMAIL = ?', [email]);
   }
 
   static async existsByEmail(email) {
@@ -15,10 +15,15 @@ export class Usuario {
   }
 
   static async create(email, senha, nome, dt_nascimento) {
-    const result = await insert(
-      'INSERT INTO USUARIOS (EMAIL, SENHA, NOME, DT_NASCIMENTO) VALUES (?, ?, ?, ?)',
-      [email, senha, nome, dt_nascimento]
-    );
-    return this.findById(result.lastID);
+    try {
+      const result = await insert(
+        'INSERT INTO USUARIOS (EMAIL, SENHA, NOME, DT_NASCIMENTO) VALUES (?, ?, ?, ?)',
+        [email, senha, nome, dt_nascimento]
+      );
+      return this.findById(result.lastID);
+    } catch (error) {
+      console.error('Erro ao criar usuário:', error);
+      throw new Error('Erro ao criar usuário no banco de dados');
+    }
   }
 } 

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { format } from 'date-fns';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
+import { getUser } from '../../services/userService';
 
 export default function Profile({ navigation }) {
   const { user, signOut } = useAuth();
@@ -21,10 +21,10 @@ export default function Profile({ navigation }) {
 
   async function loadUserData() {
     try {
-      const response = await api.get('/users');
-      setUserData(response.data);
+      const response = await getUser();
+      setUserData(response);
     } catch (error) {
-      Alert.alert('Erro', 'Erro ao carregar dados do usuário');
+      Alert.alert('Erro', error.message || 'Erro ao carregar dados do usuário');
     }
   }
 
@@ -89,33 +89,38 @@ export default function Profile({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f8f8',
+    padding: 20,
   },
   header: {
+    backgroundColor: '#ffffff',
     padding: 20,
-    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#333',
   },
   card: {
-    margin: 20,
+    backgroundColor: '#ffffff',
     padding: 20,
-    backgroundColor: '#fff',
     borderRadius: 10,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   field: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   label: {
     fontSize: 14,
@@ -124,15 +129,15 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 16,
-    color: '#2c3e50',
+    color: '#333',
     fontWeight: 'bold',
   },
   signOutButton: {
-    margin: 20,
-    backgroundColor: '#e74c3c',
+    backgroundColor: '#dc3545',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
+    marginTop: 20,
   },
   signOutButtonText: {
     color: '#fff',

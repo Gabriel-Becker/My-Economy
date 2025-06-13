@@ -3,14 +3,18 @@ import { Despesa } from '../models/Despesa.js';
 export class DespesaController {
   static async create(req, res) {
     try {
-      const { descricao, valor, mes, ano, icone } = req.body;
+      const { description, value, referenceMonth } = req.body;
+      
+      // Extrair mês e ano do referenceMonth (formato: YYYY-MM)
+      const [ano, mes] = referenceMonth.split('-').map(Number);
+      
       const novoDespesa = await Despesa.create(
-        descricao,
-        valor,
+        description, // descricao
+        value, // valor
         mes,
         ano,
         req.userId,
-        icone
+        null // icone (opcional)
       );
       res.status(201).send(novoDespesa);
     } catch (error) {

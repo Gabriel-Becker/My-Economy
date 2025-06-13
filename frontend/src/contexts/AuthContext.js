@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { signIn, signUp } from '../services/userService';
+import api from '../services/api';
 
 const AuthContext = createContext({});
 
@@ -17,7 +18,16 @@ export const AuthProvider = ({ children }) => {
         if (token && userData) {
           api.defaults.headers.Authorization = `Bearer ${token}`;
           setUser(JSON.parse(userData));
+        } else {
+          // Se não houver token ou dados do usuário, limpa o estado
+          setUser(null);
+          delete api.defaults.headers.Authorization;
         }
+      } catch (error) {
+        console.error('Erro ao carregar dados do storage:', error);
+        // Em caso de erro, limpa o estado
+        setUser(null);
+        delete api.defaults.headers.Authorization;
       } finally {
         setLoading(false);
       }
@@ -26,10 +36,10 @@ export const AuthProvider = ({ children }) => {
     loadStorageData();
   }, []);
 
-  async function signIn(email, password) {
+  const handleSignIn = async (email, password) => {
     try {
-      const response = await api.post('/sessions', { email, password });
-      const { token, user: userData } = response.data;
+      const response = await signIn({ email, password });
+      const { token, user: userData } = response;
 
       await AsyncStorage.setItem('@MyEconomy:token', token);
       await AsyncStorage.setItem('@MyEconomy:user', JSON.stringify(userData));
@@ -37,13 +47,13 @@ export const AuthProvider = ({ children }) => {
       api.defaults.headers.Authorization = `Bearer ${token}`;
       setUser(userData);
     } catch (error) {
-      throw new Error(error.response?.data?.error || 'Erro ao fazer login');
+      throw new Error(error.message);
     }
-  }
+  };
 
-  async function signUp(name, email, password, confirmPassword, birthDate) {
+  const handleSignUp = async (name, email, password, confirmPassword, birthDate) => {
     try {
-      const response = await api.post('/users', {
+      const response = await signUp({
         name,
         email,
         password,
@@ -51,7 +61,7 @@ export const AuthProvider = ({ children }) => {
         birthDate,
       });
 
-      const { token, user: userData } = response.data;
+      const { token, user: userData } = response;
 
       await AsyncStorage.setItem('@MyEconomy:token', token);
       await AsyncStorage.setItem('@MyEconomy:user', JSON.stringify(userData));
@@ -59,16 +69,21 @@ export const AuthProvider = ({ children }) => {
       api.defaults.headers.Authorization = `Bearer ${token}`;
       setUser(userData);
     } catch (error) {
-      console.log(error);
-      throw new Error(error.response?.data?.error || 'Erro ao criar conta');
+      throw new Error(error.message);
     }
-  }
+  };
 
-  async function signOut() {
-    await AsyncStorage.removeItem('@MyEconomy:token');
-    await AsyncStorage.removeItem('@MyEconomy:user');
-    setUser(null);
-  }
+  const handleSignOut = async () => {
+    try {
+      await AsyncStorage.removeItem('@MyEconomy:token');
+      await AsyncStorage.removeItem('@MyEconomy:user');
+      setUser(null);
+      delete api.defaults.headers.Authorization;
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      throw new Error('Erro ao fazer logout');
+    }
+  };
 
   return (
     <AuthContext.Provider
@@ -76,9 +91,9 @@ export const AuthProvider = ({ children }) => {
         signed: !!user,
         user,
         loading,
-        signIn,
-        signUp,
-        signOut,
+        signIn: handleSignIn,
+        signUp: handleSignUp,
+        signOut: handleSignOut,
       }}
     >
       {children}

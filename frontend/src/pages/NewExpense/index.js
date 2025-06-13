@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,28 @@ import {
   Alert,
 } from 'react-native';
 import { format } from 'date-fns';
-import api from '../../services/api';
+import { createExpense, updateExpense } from '../../services/expenseService';
 
-export default function NewExpense({ navigation }) {
+export default function NewExpense({ navigation, route }) {
+  const [id, setId] = useState(null);
   const [description, setDescription] = useState('');
   const [value, setValue] = useState('');
   const [referenceMonth, setReferenceMonth] = useState(
     format(new Date(), 'yyyy-MM')
   );
+
+  useEffect(() => {
+    if (route.params?.expense) {
+      const { expense } = route.params;
+      setId(expense.id);
+      setDescription(expense.description);
+      setValue(String(expense.value)); // Convert to string for TextInput
+      setReferenceMonth(expense.referenceMonth);
+      navigation.setOptions({ title: 'Editar Despesa' });
+    } else {
+      navigation.setOptions({ title: 'Nova Despesa' });
+    }
+  }, [route.params?.expense, navigation]);
 
   async function handleSubmit() {
     try {
@@ -25,55 +39,70 @@ export default function NewExpense({ navigation }) {
       }
 
       const currentDate = new Date();
-      const selectedDate = new Date(referenceMonth);
+      const [year, month] = referenceMonth.split('-').map(Number);
 
-      if (selectedDate < new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)) {
+      // Basic validation for month/year (Backend will also validate)
+      if (year < currentDate.getFullYear() || (year === currentDate.getFullYear() && month < (currentDate.getMonth() + 1))) {
         Alert.alert('Erro', 'Não é possível cadastrar despesas para meses anteriores');
         return;
       }
 
-      await api.post('/expenses', {
+      if (Number(value) <= 0) {
+        Alert.alert('Erro', 'O valor deve ser maior que zero');
+        return;
+      }
+
+      const expenseData = {
         description,
         value: Number(value),
         referenceMonth,
-      });
+      };
 
-      Alert.alert('Sucesso', 'Despesa cadastrada com sucesso');
+      if (id) {
+        await updateExpense(id, expenseData);
+        Alert.alert('Sucesso', 'Despesa atualizada com sucesso');
+      } else {
+        await createExpense(expenseData);
+        Alert.alert('Sucesso', 'Despesa cadastrada com sucesso');
+      }
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Erro', error.response?.data?.error || 'Erro ao cadastrar despesa');
+      Alert.alert('Erro', error.message || 'Erro ao salvar despesa');
     }
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Nova Despesa</Text>
+      <Text style={styles.title}>{id ? 'Editar Despesa' : 'Nova Despesa'}</Text>
 
       <View style={styles.form}>
+        <Text style={styles.label}>Descrição</Text>
         <TextInput
           style={styles.input}
-          placeholder="Descrição"
+          placeholder="Descrição da despesa"
           value={description}
           onChangeText={setDescription}
         />
 
+        <Text style={styles.label}>Valor</Text>
         <TextInput
           style={styles.input}
-          placeholder="Valor"
+          placeholder="R$ 0,00"
           keyboardType="numeric"
           value={value}
           onChangeText={setValue}
         />
 
+        <Text style={styles.label}>Mês de Referência</Text>
         <TextInput
           style={styles.input}
-          placeholder="Mês de Referência (YYYY-MM)"
+          placeholder="YYYY-MM"
           value={referenceMonth}
           onChangeText={setReferenceMonth}
         />
 
         <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-          <Text style={styles.buttonText}>Cadastrar</Text>
+          <Text style={styles.buttonText}>Salvar</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -90,41 +119,41 @@ export default function NewExpense({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f8f8',
     padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 20,
+    color: '#333',
+    marginBottom: 30,
   },
   form: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    width: '100%',
+    maxWidth: 300,
+  },
+  label: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+    marginTop: 10,
   },
   input: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
     borderRadius: 5,
-    padding: 15,
-    marginBottom: 15,
+    padding: 10,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   button: {
-    backgroundColor: '#2ecc71',
+    backgroundColor: '#28a745',
     borderRadius: 5,
     padding: 15,
     alignItems: 'center',
-    marginBottom: 10,
+    marginTop: 20,
   },
   buttonText: {
     color: '#fff',
@@ -132,10 +161,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   cancelButton: {
-    backgroundColor: '#e74c3c',
+    backgroundColor: '#6c757d',
     borderRadius: 5,
     padding: 15,
     alignItems: 'center',
+    marginTop: 10,
   },
   cancelButtonText: {
     color: '#fff',

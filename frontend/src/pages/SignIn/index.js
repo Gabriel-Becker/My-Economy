@@ -16,8 +16,15 @@ export default function SignIn({ navigation }) {
 
   async function handleSignIn() {
     try {
+      // Validações
       if (!email || !password) {
         Alert.alert('Erro', 'Preencha todos os campos');
+        return;
+      }
+
+      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!regex.test(email)) {
+        Alert.alert('Erro', 'Insira um email válido');
         return;
       }
 
@@ -29,19 +36,19 @@ export default function SignIn({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Economy</Text>
-      <Text style={styles.subtitle}>Controle suas despesas</Text>
-
+      <Text style={styles.title}>ENTRAR</Text>
       <View style={styles.form}>
+        <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="email@exemplo.com"
           keyboardType="email-address"
           autoCapitalize="none"
           value={email}
           onChangeText={setEmail}
         />
 
+        <Text style={styles.label}>Senha</Text>
         <TextInput
           style={styles.input}
           placeholder="Senha"
@@ -58,7 +65,7 @@ export default function SignIn({ navigation }) {
           style={styles.link}
           onPress={() => navigation.navigate('SignUp')}
         >
-          <Text style={styles.linkText}>Não tem uma conta? Cadastre-se</Text>
+          <Text style={styles.linkText}>Cadastre-se</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -68,47 +75,41 @@ export default function SignIn({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 20,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  form: {
     backgroundColor: '#fff',
     padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    color: '#333',
+  },
+  form: {
+    width: '100%',
+    maxWidth: 300,
+  },
+  label: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+    marginTop: 10,
   },
   input: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
     borderRadius: 5,
-    padding: 15,
-    marginBottom: 15,
+    padding: 10,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   button: {
-    backgroundColor: '#3498db',
+    backgroundColor: '#28a745',
     borderRadius: 5,
     padding: 15,
     alignItems: 'center',
+    marginTop: 20,
   },
   buttonText: {
     color: '#fff',
@@ -120,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#3498db',
+    color: '#007AFF',
     fontSize: 14,
   },
 }); 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,26 @@ import {
   Alert,
 } from 'react-native';
 import { format } from 'date-fns';
-import api from '../../services/api';
+import { createLimit, updateLimit } from '../../services/limitService';
 
-export default function MonthlyLimit({ navigation }) {
+export default function MonthlyLimit({ navigation, route }) {
+  const [id, setId] = useState(null);
   const [value, setValue] = useState('');
   const [referenceMonth, setReferenceMonth] = useState(
     format(new Date(), 'yyyy-MM')
   );
+
+  useEffect(() => {
+    if (route.params?.limit) {
+      const { limit } = route.params;
+      setId(limit.id);
+      setValue(String(limit.value)); // Convert to string for TextInput
+      setReferenceMonth(limit.referenceMonth);
+      navigation.setOptions({ title: 'Editar Limite' });
+    } else {
+      navigation.setOptions({ title: 'Definir Limite Mensal' });
+    }
+  }, [route.params?.limit, navigation]);
 
   async function handleSubmit() {
     try {
@@ -24,47 +37,61 @@ export default function MonthlyLimit({ navigation }) {
       }
 
       const currentDate = new Date();
-      const selectedDate = new Date(referenceMonth);
+      const [year, month] = referenceMonth.split('-').map(Number);
 
-      if (selectedDate < new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)) {
+      // Basic validation for month/year (Backend will also validate)
+      if (year < currentDate.getFullYear() || (year === currentDate.getFullYear() && month < (currentDate.getMonth() + 1))) {
         Alert.alert('Erro', 'Não é possível cadastrar limite para meses anteriores');
         return;
       }
 
-      await api.post('/monthly-limits', {
+      if (Number(value) <= 0) {
+        Alert.alert('Erro', 'O valor deve ser maior que zero');
+        return;
+      }
+
+      const limitData = {
         value: Number(value),
         referenceMonth,
-      });
+      };
 
-      Alert.alert('Sucesso', 'Limite mensal cadastrado com sucesso');
+      if (id) {
+        await updateLimit(id, limitData);
+        Alert.alert('Sucesso', 'Limite atualizado com sucesso');
+      } else {
+        await createLimit(limitData);
+        Alert.alert('Sucesso', 'Limite mensal cadastrado com sucesso');
+      }
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Erro', error.response?.data?.error || 'Erro ao cadastrar limite');
+      Alert.alert('Erro', error.message || 'Erro ao salvar limite');
     }
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Definir Limite Mensal</Text>
+      <Text style={styles.title}>{id ? 'Editar Limite' : 'Definir Limite Mensal'}</Text>
 
       <View style={styles.form}>
+        <Text style={styles.label}>Valor</Text>
         <TextInput
           style={styles.input}
-          placeholder="Valor do Limite"
+          placeholder="R$ 0,00"
           keyboardType="numeric"
           value={value}
           onChangeText={setValue}
         />
 
+        <Text style={styles.label}>Mês de Referência</Text>
         <TextInput
           style={styles.input}
-          placeholder="Mês de Referência (YYYY-MM)"
+          placeholder="YYYY-MM"
           value={referenceMonth}
           onChangeText={setReferenceMonth}
         />
 
         <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-          <Text style={styles.buttonText}>Definir Limite</Text>
+          <Text style={styles.buttonText}>Salvar</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -81,41 +108,41 @@ export default function MonthlyLimit({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f8f8',
     padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 20,
+    color: '#333',
+    marginBottom: 30,
   },
   form: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    width: '100%',
+    maxWidth: 300,
+  },
+  label: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+    marginTop: 10,
   },
   input: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
     borderRadius: 5,
-    padding: 15,
-    marginBottom: 15,
+    padding: 10,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   button: {
-    backgroundColor: '#3498db',
+    backgroundColor: '#28a745',
     borderRadius: 5,
     padding: 15,
     alignItems: 'center',
-    marginBottom: 10,
+    marginTop: 20,
   },
   buttonText: {
     color: '#fff',
@@ -123,10 +150,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   cancelButton: {
-    backgroundColor: '#e74c3c',
+    backgroundColor: '#6c757d',
     borderRadius: 5,
     padding: 15,
     alignItems: 'center',
+    marginTop: 10,
   },
   cancelButtonText: {
     color: '#fff',
