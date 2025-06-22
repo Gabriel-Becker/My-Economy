@@ -37,7 +37,9 @@ export default function NewExpense({ navigation, route }) {
       setDescription(expense.DESCRICAO);
       const valueInCents = String(expense.VALOR * 100);
       setValue(valueInCents.replace(/\D/g, ''));
-      setReferenceMonth(expense.MES_REFERENCIA);
+      // Constrói o mês de referência a partir de ANO e MES
+      const reference = `${expense.ANO}-${String(expense.MES).padStart(2, '0')}`;
+      setReferenceMonth(reference);
       navigation.setOptions({ title: 'Editar Despesa' });
     } else {
       navigation.setOptions({ title: 'Nova Despesa' });
@@ -56,7 +58,7 @@ export default function NewExpense({ navigation, route }) {
 
   async function handleSubmit() {
     try {
-      if (!description || !value || !referenceMonth) {
+      if (!description || value === '' || !referenceMonth) {
         showToast('Preencha todos os campos obrigatórios.');
         return;
       }

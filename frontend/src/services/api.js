@@ -1,8 +1,10 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Para desenvolvimento com Expo Go, troque 'localhost' pelo IP da sua máquina na rede local.
+// Ex: http://192.168.1.10:8080
 const api = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: 'http://192.168.15.15:8080', // Troque 'localhost' pelo seu IP
 });
 
 // Interceptor para requisições

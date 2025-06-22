@@ -46,12 +46,21 @@ export class DespesaController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      const { descricao, valor, mes, ano, icone } = req.body;
+      // Aceita tanto os nomes de campos antigos quanto os novos para maior robustez
+      const description = req.body.description || req.body.descricao;
+      const value = req.body.value !== undefined ? req.body.value : req.body.valor;
+      const { referenceMonth, icone } = req.body;
+
+      if (description === undefined || value === undefined || referenceMonth === undefined) {
+        return res.status(400).json({ error: 'Campos obrigatórios ausentes (description, value, referenceMonth).' });
+      }
+      
+      const [ano, mes] = referenceMonth.split('-').map(Number);
       
       const despesa = await Despesa.update(
         id,
-        descricao,
-        valor,
+        description,
+        value,
         mes,
         ano,
         req.userId,

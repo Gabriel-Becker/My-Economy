@@ -31,10 +31,12 @@ export default function MonthlyLimit({ navigation, route }) {
   useEffect(() => {
     if (route.params?.limit) {
       const { limit } = route.params;
-      setId(limit.ID || limit.id);
-      // Converte o valor numérico para uma string de dígitos para o estado
-      setValue(String(parseFloat(limit.VALOR || limit.value) * 100));
-      setReferenceMonth(format(new Date(limit.ANO, limit.MES - 1), 'yyyy-MM'));
+      setId(limit.ID);
+      setValue(String(limit.VALOR * 100)); // Armazena o valor em centavos
+
+      // Constrói o mês de referência a partir de ANO e MES
+      const reference = `${limit.ANO}-${String(limit.MES).padStart(2, '0')}`;
+      setReferenceMonth(reference);
       navigation.setOptions({ title: 'Editar Limite' });
     } else {
       navigation.setOptions({ title: 'Definir Limite Mensal' });
