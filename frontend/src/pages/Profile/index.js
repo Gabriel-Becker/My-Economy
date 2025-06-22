@@ -12,7 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getUser } from '../../services/userService';
 
 export default function Profile({ navigation }) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
@@ -21,29 +21,12 @@ export default function Profile({ navigation }) {
 
   async function loadUserData() {
     try {
+      setUserData(user);
       const response = await getUser();
       setUserData(response);
     } catch (error) {
       Alert.alert('Erro', error.message || 'Erro ao carregar dados do usuário');
     }
-  }
-
-  function handleSignOut() {
-    Alert.alert(
-      'Sair',
-      'Tem certeza que deseja sair?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Sair',
-          onPress: () => signOut(),
-        },
-      ],
-      { cancelable: false }
-    );
   }
 
   if (!userData) {
@@ -74,14 +57,10 @@ export default function Profile({ navigation }) {
         <View style={styles.field}>
           <Text style={styles.label}>Data de Nascimento</Text>
           <Text style={styles.value}>
-            {format(new Date(userData.birthDate), 'dd/MM/yyyy')}
+            {userData.birthDate ? format(new Date(userData.birthDate), 'dd/MM/yyyy') : 'Não informado'}
           </Text>
         </View>
       </View>
-
-      <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutButtonText}>Sair</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -130,18 +109,6 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 16,
     color: '#333',
-    fontWeight: 'bold',
-  },
-  signOutButton: {
-    backgroundColor: '#dc3545',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  signOutButtonText: {
-    color: '#fff',
-    fontSize: 16,
     fontWeight: 'bold',
   },
   loadingText: {

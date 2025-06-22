@@ -2,27 +2,62 @@ import jwt from 'jsonwebtoken';
 import { Usuario } from '../models/Usuario.js';
 import bcrypt from 'bcryptjs';
 
+// Função para padronizar o formato do usuário retornado
+const formatUser = (user) => {
+  if (!user) return null;
+  return {
+    id: user.ID,
+    name: user.NOME,
+    email: user.EMAIL,
+    birthDate: user.DT_NASCIMENTO,
+  };
+};
+
 export class UsuarioController {
   static async register(req, res) {
     try {
-      const { email, password, name, birthDate } = req.body;
+      console.log('=== BACKEND - REGISTER ===');
+      console.log('Body completo recebido:', req.body);
+      console.log('Headers:', req.headers);
+      
+      const { email, password, name, birthDate, confirmPassword } = req.body;
+      
+      console.log('Dados extraídos:', { email, password, name, birthDate, confirmPassword });
+      
+      // Validações
+      if (!email || !password || !name || !birthDate) {
+        console.error('Dados obrigatórios faltando');
+        return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+      }
+      
+      if (password !== confirmPassword) {
+        console.error('Senhas não conferem');
+        return res.status(400).json({ error: 'As senhas não conferem' });
+      }
       
       const exists = await Usuario.existsByEmail(email);
       if (exists) {
+        console.error('Email já cadastrado:', email);
         return res.status(409).json({ error: 'Email já cadastrado' });
       }
 
+      console.log('Criando hash da senha...');
       const hashedPassword = await bcrypt.hash(password, 10); // Hash da senha
 
+      console.log('Chamando Usuario.create com:', { email, hashedPassword, name, birthDate });
       const novoUsuario = await Usuario.create(email, hashedPassword, name, birthDate);
+      console.log('Usuário criado:', novoUsuario);
       
-      const token = jwt.sign({ id: novoUsuario.id }, process.env.SECRET, {
+      const token = jwt.sign({ id: novoUsuario.ID }, process.env.SECRET, {
         expiresIn: 1000 * 60 * 60 * 24, // 24 horas
       });
 
-      novoUsuario.senha = undefined;
-      return res.status(201).json({ auth: true, token, user: novoUsuario });
+      const userResponse = formatUser(novoUsuario);
+
+      console.log('=== REGISTER CONCLUÍDO COM SUCESSO ===');
+      return res.status(201).json({ auth: true, token, user: userResponse });
     } catch (error) {
+      console.error('=== ERRO NO REGISTER ===');
       console.error('Erro ao registrar usuário:', error);
       res.status(500).json({ error: error.message });
     }
@@ -43,12 +78,13 @@ export class UsuarioController {
         return res.status(401).json({ error: 'Senha inválida.' });
       }
 
-      const token = jwt.sign({ id: usuario.id }, process.env.SECRET, {
+      const token = jwt.sign({ id: usuario.ID }, process.env.SECRET, {
         expiresIn: 1000 * 60 * 60 * 24, // 24 horas
       });
 
-      usuario.senha = undefined;
-      return res.json({ auth: true, token, user: usuario });
+      const userResponse = formatUser(usuario);
+
+      return res.json({ auth: true, token, user: userResponse });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -72,9 +108,10 @@ export class UsuarioController {
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
 
-      usuario.senha = undefined;
+      const userResponse = formatUser(usuario);
+
       console.log('Dados do usuário encontrados e retornados para o perfil.');
-      return res.json(usuario);
+      return res.json(userResponse);
     } catch (error) {
       console.error('Erro ao buscar perfil:', error);
       res.status(500).json({ error: error.message });

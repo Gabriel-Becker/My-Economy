@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,27 +6,38 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { format, addMonths, subMonths } from 'date-fns';
+import { useFocusEffect } from '@react-navigation/native';
+import { format, addMonths, subMonths, isSameMonth, isFuture, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { getLimit, deleteLimit } from '../../services/limitService';
 
-const LimitItem = ({ item, onDelete, onEdit }) => (
-  <View style={limitItemStyles.itemContainer}>
-    <View style={limitItemStyles.itemDetails}>
-      <Text style={limitItemStyles.itemDescription}>Limite Mensal</Text>
-      <Text style={limitItemStyles.itemValue}>R$ {parseFloat(item.value).toFixed(2)}</Text>
+const LimitItem = ({ item, onDelete, onEdit, canModify }) => {
+  // Adiciona uma verificação para garantir que o valor é um número antes de formatar
+  const value = (item && typeof item.VALOR === 'number') ? item.VALOR : parseFloat(item.VALOR || 0);
+  const displayValue = !isNaN(value) ? value.toFixed(2).replace('.', ',') : '0,00';
+
+  return (
+    <View style={limitItemStyles.itemContainer}>
+      <View style={limitItemStyles.itemDetails}>
+        <Text style={limitItemStyles.itemDescription}>Limite Mensal</Text>
+        <Text style={limitItemStyles.itemValue}>R$ {displayValue}</Text>
+      </View>
+      {canModify && (
+        <View style={limitItemStyles.itemActions}>
+          <TouchableOpacity onPress={() => onEdit(item)} style={limitItemStyles.actionButton}>
+            <Text style={limitItemStyles.actionButtonText}>Editar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => onDelete(item.ID)} style={[limitItemStyles.actionButton, limitItemStyles.deleteButton]}>
+            <Text style={limitItemStyles.actionButtonText}>Excluir</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
-    <View style={limitItemStyles.itemActions}>
-      <TouchableOpacity onPress={() => onEdit(item)} style={limitItemStyles.actionButton}>
-        <Text style={limitItemStyles.actionButtonText}>Editar</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => onDelete(item.id)} style={[limitItemStyles.actionButton, limitItemStyles.deleteButton]}>
-        <Text style={limitItemStyles.actionButtonText}>Excluir</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-);
+  );
+};
 
 const limitItemStyles = StyleSheet.create({
   itemContainer: {
@@ -78,24 +89,37 @@ const limitItemStyles = StyleSheet.create({
 });
 
 export default function LimitList({ navigation }) {
-  const [limits, setLimits] = useState([]);
+  const [limit, setLimit] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [displayMonth, setDisplayMonth] = useState(new Date());
 
+  const today = startOfMonth(new Date());
+  const selectedMonth = startOfMonth(displayMonth);
+  const canModify = isSameMonth(selectedMonth, today) || isFuture(selectedMonth);
+
   const loadLimitsForMonth = useCallback(async () => {
+    setIsLoading(true);
     try {
       const formattedMonth = format(displayMonth, 'yyyy-MM');
       const response = await getLimit(formattedMonth);
-      // A API de limites retorna um único objeto ou null/undefined se não houver limite para o mês
-      setLimits(response ? [response] : []);
+      // A API pode retornar [null], então normalizamos para null
+      const currentLimit = Array.isArray(response) && response[0] ? response[0] : null;
+      setLimit(currentLimit);
     } catch (error) {
-      setLimits([]);
-      Alert.alert('Erro', error.message || 'Erro ao carregar limites');
+      setLimit(null);
+      if (error.response && error.response.status !== 404) {
+        Alert.alert('Erro', 'Não foi possível carregar os limites.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   }, [displayMonth]);
 
-  useEffect(() => {
-    loadLimitsForMonth();
-  }, [loadLimitsForMonth]);
+  useFocusEffect(
+    useCallback(() => {
+      loadLimitsForMonth();
+    }, [loadLimitsForMonth])
+  );
 
   const handleMonthChange = (direction) => {
     if (direction === 'prev') {
@@ -129,12 +153,50 @@ export default function LimitList({ navigation }) {
   };
 
   const handleEdit = (item) => {
-    // Navegar para a tela de edição de limite, passando os dados do item
     navigation.navigate('MonthlyLimit', { limit: item });
+  };
+  
+  const renderContent = () => {
+    if (isLoading) {
+      return <ActivityIndicator size="large" color="#28a745" style={styles.centered} />;
+    }
+
+    if (!limit) {
+      return (
+        <View style={styles.centered}>
+          <Icon name="highlight-off" size={60} color="#ccc" />
+          <Text style={styles.noDataText}>Nenhum limite cadastrado para este mês.</Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={[limit]}
+        keyExtractor={(item) => String(item.ID)}
+        renderItem={({ item }) => (
+          <LimitItem item={item} onDelete={handleDelete} onEdit={handleEdit} canModify={canModify} />
+        )}
+        contentContainerStyle={styles.listContent}
+      />
+    );
   };
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Meus Limites</Text>
+        {canModify && !limit && (
+          <TouchableOpacity 
+            style={styles.addButton} 
+            onPress={() => navigation.navigate('MonthlyLimit', { limit: null })}
+          >
+            <Icon name="add-circle" size={24} color="#fff" />
+            <Text style={styles.addButtonText}>Novo Limite</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       <View style={styles.monthSelector}>
         <TouchableOpacity onPress={() => handleMonthChange('prev')}>
           <Text style={styles.monthArrow}>{'<'}</Text>
@@ -145,20 +207,7 @@ export default function LimitList({ navigation }) {
         </TouchableOpacity>
       </View>
       
-      <Text style={styles.title}>Histórico de Limites</Text>
-
-      {limits.length > 0 ? (
-        <FlatList
-          data={limits}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => (
-            <LimitItem item={item} onDelete={handleDelete} onEdit={handleEdit} />
-          )}
-          contentContainerStyle={styles.listContent}
-        />
-      ) : (
-        <Text style={styles.noDataText}>Nenhum limite registrado para este mês.</Text>
-      )}
+      {renderContent()}
     </View>
   );
 }
@@ -168,6 +217,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f8f8',
     padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  addButton: {
+    flexDirection: 'row',
+    backgroundColor: '#28a745',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   monthSelector: {
     flexDirection: 'row',
@@ -193,20 +267,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#555',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
   listContent: {
     paddingBottom: 20,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 50,
   },
   noDataText: {
     fontSize: 16,
     color: '#7f8c8d',
     textAlign: 'center',
-    marginTop: 50,
+    marginTop: 20,
   },
 }); 

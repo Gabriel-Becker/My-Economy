@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, isSameMonth, isFuture, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useFocusEffect } from '@react-navigation/native';
 import { getLimit } from '../../services/limitService';
 import { getExpenses } from '../../services/expenseService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,67 +20,47 @@ export default function Home({ navigation }) {
   const [monthlyLimit, setMonthlyLimit] = useState(null);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [displayMonth, setDisplayMonth] = useState(new Date());
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadDataForMonth();
-  }, [displayMonth]);
+  // Lógica para verificar se o mês pode ser modificado
+  const today = startOfMonth(new Date());
+  const selectedMonth = startOfMonth(displayMonth);
+  const canModify = isSameMonth(selectedMonth, today) || isFuture(selectedMonth);
+
+  // useFocusEffect garante que os dados são recarregados sempre que a tela Home recebe foco
+  useFocusEffect(
+    useCallback(() => {
+      loadDataForMonth();
+    }, [displayMonth])
+  );
 
   async function loadDataForMonth() {
+    setIsLoading(true);
     try {
       const formattedMonth = format(displayMonth, 'yyyy-MM');
+      
+      const limitData = await getLimit(formattedMonth);
+      // A API pode retornar [null], então verificamos o primeiro elemento
+      const currentLimit = Array.isArray(limitData) && limitData[0] ? limitData[0] : null;
+      setMonthlyLimit(currentLimit);
 
-      // Buscar limite
-      const limitResponse = await getLimit(formattedMonth);
-      setMonthlyLimit(limitResponse);
-
-      // Buscar despesas e calcular total
       const expensesResponse = await getExpenses(formattedMonth);
-      const calculatedTotalExpenses = expensesResponse.reduce((sum, expense) => sum + parseFloat(expense.value), 0);
+      const calculatedTotalExpenses = expensesResponse.reduce(
+        (sum, expense) => sum + parseFloat(expense.VALOR || expense.value), 0
+      );
       setTotalExpenses(calculatedTotalExpenses);
 
     } catch (error) {
-      // Se o limite não for encontrado (404), não é um erro, apenas nenhum limite definido.
-      // Para outros erros, exibir alerta.
-      if (error.message && !error.message.includes('404')) {
-        Alert.alert('Erro', error.message || 'Erro ao carregar dados do mês');
+      if (error.response && error.response.status !== 404) {
+        Alert.alert('Erro', 'Não foi possível carregar os dados do mês.');
       }
       setMonthlyLimit(null);
       setTotalExpenses(0);
+    } finally {
+      setIsLoading(false);
     }
   }
-
-  function getStatusMessage() {
-    if (!monthlyLimit) {
-      return {
-        emoji: '😔',
-        title: 'Nenhum limite definido',
-        message: 'Defina um limite mensal para começar a controlar suas despesas',
-        type: 'info',
-        buttonText: 'Definir Limite',
-      };
-    }
-
-    const remaining = parseFloat(monthlyLimit.value) - totalExpenses;
-
-    if (remaining >= 0) {
-      return {
-        emoji: '😊',
-        title: 'Parabéns!',
-        message: `Você economizou R$ ${remaining.toFixed(2)} este mês`,
-        type: 'success',
-      };
-    }
-
-    return {
-      emoji: '😥',
-      title: 'Atenção!',
-      message: `Você ultrapassou o limite em R$ ${Math.abs(remaining).toFixed(2)}`,
-      type: 'warning',
-    };
-  }
-
-  const status = getStatusMessage();
-
+  
   const handleMonthChange = (direction) => {
     if (direction === 'prev') {
       setDisplayMonth(subMonths(displayMonth, 1));
@@ -87,10 +69,76 @@ export default function Home({ navigation }) {
     }
   };
 
+  const renderWelcomeCard = () => {
+    return (
+      <View style={[styles.card, styles.cardInfo]}>
+        <Text style={styles.cardTitle}>Bem-vindo(a)! 👋</Text>
+        <Text style={styles.cardMessage}>
+          {canModify
+            ? 'Você ainda não tem um limite definido para este mês. Que tal criar um para começar?'
+            : 'Nenhum limite foi definido para este mês.'
+          }
+        </Text>
+        {canModify && ( // Mostra o botão apenas se o mês puder ser modificado
+          <TouchableOpacity
+            style={styles.cardButton}
+            onPress={() => navigation.navigate('MonthlyLimit')}
+          >
+            <Text style={styles.cardButtonText}>Definir Limite Mensal</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  const renderStatusCard = () => {
+    const remaining = parseFloat(monthlyLimit.VALOR) - totalExpenses;
+    const isOverLimit = remaining < 0;
+
+    return (
+      <View style={[styles.card, isOverLimit ? styles.cardWarning : styles.cardSuccess]}>
+        <Text style={styles.cardTitle}>{isOverLimit ? 'Atenção! 😥' : 'Parabéns! 😊'}</Text>
+        <Text style={styles.cardMessage}>
+          {isOverLimit 
+            ? `Você ultrapassou o limite em R$ ${Math.abs(remaining).toFixed(2)}`
+            : `Você ainda tem R$ ${remaining.toFixed(2)} restantes este mês.`
+          }
+        </Text>
+      </View>
+    );
+  };
+
+  const renderProgressBar = () => {
+    const limitValue = parseFloat(monthlyLimit.VALOR);
+    const progress = limitValue > 0 ? (totalExpenses / limitValue) * 100 : 0;
+  
+    return (
+      <View style={styles.progressContainer}>
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressTitle}>Progresso do Mês</Text>
+          <Text style={styles.progressValue}>
+            R$ {totalExpenses.toFixed(2)} / R$ {limitValue.toFixed(2)}
+          </Text>
+        </View>
+        <View style={styles.progressBar}>
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: `${Math.min(progress, 100)}%`,
+                backgroundColor: totalExpenses <= limitValue ? '#28a745' : '#dc3545',
+              },
+            ]}
+          />
+        </View>
+      </View>
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.topHeader}>
-        <Text style={styles.welcomeText}>Olá {user?.name || 'Usuário'} {status.emoji}</Text>
+        <Text style={styles.welcomeText}>Olá {user?.name || 'Usuário'}</Text>
         <View style={styles.monthSelector}>
           <TouchableOpacity onPress={() => handleMonthChange('prev')}>
             <Text style={styles.monthArrow}>{'<'}</Text>
@@ -102,55 +150,30 @@ export default function Home({ navigation }) {
         </View>
       </View>
 
-      {/* Card Feedback */}
-      <View style={[styles.card, styles[`card${status.type.charAt(0).toUpperCase() + status.type.slice(1)}`]]}>
-        <Text style={styles.cardTitle}>{status.title}</Text>
-        <Text style={styles.cardMessage}>{status.message}</Text>
-        {status.buttonText && (
-          <TouchableOpacity
-            style={styles.cardButton}
-            onPress={() => navigation.navigate('MonthlyLimit')}
-          >
-            <Text style={styles.cardButtonText}>{status.buttonText}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Progress Bar (Visible only if monthlyLimit is available) */}
-      {monthlyLimit && (
-        <View style={styles.progressContainer}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Progresso do Mês</Text>
-            <Text style={styles.progressValue}>
-              R$ {totalExpenses.toFixed(2)} / R$ {parseFloat(monthlyLimit.value).toFixed(2)}
-            </Text>
-          </View>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${Math.min(
-                    (totalExpenses / parseFloat(monthlyLimit.value)) * 100,
-                    100
-                  )}%`,
-                  backgroundColor: totalExpenses <= parseFloat(monthlyLimit.value) ? '#28a745' : '#dc3545',
-                },
-              ]}
-            />
-          </View>
-        </View>
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#28a745" style={{ marginTop: 50 }} />
+      ) : monthlyLimit ? (
+        <>
+          {renderStatusCard()}
+          {renderProgressBar()}
+        </>
+      ) : (
+        renderWelcomeCard()
       )}
 
-      {/* Action Buttons at the bottom - not a tab navigator yet */}
-      <View style={styles.actionButtonsContainer}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('NewExpense')}>
-          <Text style={styles.actionButtonText}>Nova Despesa</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('MonthlyLimit')}>
-          <Text style={styles.actionButtonText}>Gerenciar Limite</Text>
-        </TouchableOpacity>
-      </View>
+      {canModify && ( // Mostra os botões apenas para o mês atual ou futuro
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('NewExpense', { referenceMonth: format(displayMonth, 'yyyy-MM') })}>
+            <Text style={styles.actionButtonText}>Nova Despesa</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => navigation.navigate('MonthlyLimit', { limit: monthlyLimit })}
+          >
+            <Text style={styles.actionButtonText}>Gerenciar Limite</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 }

@@ -12,7 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function SignIn({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { signIn } = useAuth();
+  const { signIn, clearStorageData } = useAuth();
 
   async function handleSignIn() {
     try {
@@ -30,9 +30,22 @@ export default function SignIn({ navigation }) {
 
       await signIn(email, password);
     } catch (error) {
-      Alert.alert('Erro', error.message);
+      let errorMessage = 'Ocorreu um erro ao tentar fazer login.';
+      if (error.response && error.response.data && (error.response.data.error || error.response.data.message)) {
+        errorMessage = error.response.data.error || error.response.data.message;
+      }
+      Alert.alert('Erro no Login', errorMessage);
     }
   }
+
+  const handleClearData = async () => {
+    try {
+      await clearStorageData();
+      Alert.alert('Sucesso', 'Dados limpos! Recarregue a página.');
+    } catch (error) {
+      Alert.alert('Erro', 'Erro ao limpar dados');
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -62,10 +75,10 @@ export default function SignIn({ navigation }) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.link}
+          style={[styles.button, { backgroundColor: '#28a745', marginTop: 10 }]}
           onPress={() => navigation.navigate('SignUp')}
         >
-          <Text style={styles.linkText}>Cadastre-se</Text>
+          <Text style={styles.buttonText}>Cadastre-se</Text>
         </TouchableOpacity>
       </View>
     </View>

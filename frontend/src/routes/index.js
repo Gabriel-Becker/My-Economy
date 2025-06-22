@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, ActivityIndicator, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useCallback } from 'react';
+import { View, ActivityIndicator, StyleSheet, Alert, Text, TouchableOpacity } from 'react-native';
+import { NavigationContainer, useFocusEffect } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,29 +18,37 @@ import LimitList from '../pages/LimitList';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function LogoutTabButton(props) {
+// 1. A tela de Logout agora é uma tela de confirmação visível
+function LogoutScreen({ navigation }) {
   const { signOut } = useAuth();
+
   return (
-    <TouchableOpacity
-      {...props}
-      onPress={() => {
-        Alert.alert(
-          'Sair',
-          'Tem certeza que deseja sair?',
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Sair', onPress: signOut },
-          ],
-          { cancelable: false }
-        );
-      }}
-    >
-      {props.children}
-    </TouchableOpacity>
+    <View style={styles.confirmationContainer}>
+      <Text style={styles.confirmationTitle}>Sair da Conta</Text>
+      <Text style={styles.confirmationText}>
+        Você tem certeza que deseja encerrar a sessão?
+      </Text>
+      
+      <TouchableOpacity 
+        style={[styles.confirmationButton, styles.confirmButton]} 
+        onPress={signOut}
+      >
+        <Text style={styles.confirmationButtonText}>Sim, Sair</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={[styles.confirmationButton, styles.cancelButton]} 
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={styles.confirmationButtonText}>Cancelar</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 function AppRoutes() {
+  const { signOut } = useAuth();
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -101,13 +109,12 @@ function AppRoutes() {
       />
       <Tab.Screen
         name="Sair"
-        component={() => null} // Componente vazio, a ação está no tabBarButton
+        component={LogoutScreen}
         options={{
           headerShown: false,
           tabBarIcon: ({ color }) => (
             <Icon name="exit-to-app" size={24} color={color} />
           ),
-          tabBarButton: (props) => <LogoutTabButton {...props} />,
         }}
       />
     </Tab.Navigator>
@@ -156,5 +163,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f8f8f8',
+  },
+  // Estilos para a nova tela de confirmação
+  confirmationContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  confirmationTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  confirmationText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  confirmationButton: {
+    width: '100%',
+    maxWidth: 300,
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  confirmButton: {
+    backgroundColor: '#dc3545',
+  },
+  cancelButton: {
+    backgroundColor: '#6c757d',
+  },
+  confirmationButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 }); 

@@ -66,7 +66,12 @@ export default function SignUp({ navigation }) {
 
       await signUp(name, email, password, confirmPassword, formattedBirthDateForBackend);
     } catch (error) {
-      Alert.alert('Erro', error.message);
+      // Modificação para extrair a mensagem de erro da resposta da API
+      let errorMessage = 'Ocorreu um erro ao tentar criar a conta.';
+      if (error.response && error.response.data && (error.response.data.error || error.response.data.message)) {
+        errorMessage = error.response.data.error || error.response.data.message;
+      }
+      Alert.alert('Erro no Cadastro', errorMessage);
     }
   }
 
@@ -125,10 +130,10 @@ export default function SignUp({ navigation }) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.link}
+          style={[styles.button, { backgroundColor: '#6c757d', marginTop: 10 }]}
           onPress={() => navigation.navigate('SignIn')}
         >
-          <Text style={styles.linkText}>Login</Text>
+          <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
       </View>
     </View>

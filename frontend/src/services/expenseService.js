@@ -2,7 +2,12 @@ import api from './api';
 
 export const getExpenses = async (referenceMonth) => {
   try {
-    const response = await api.get(`/despesas${referenceMonth ? `?referenceMonth=${referenceMonth}` : ''}`);
+    let query = '';
+    if (referenceMonth) {
+      const [ano, mes] = referenceMonth.split('-');
+      query = `?mes=${parseInt(mes, 10)}&ano=${ano}`;
+    }
+    const response = await api.get(`/despesas${query}`);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.error || 'Erro ao buscar despesas');

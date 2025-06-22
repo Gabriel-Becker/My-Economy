@@ -7,12 +7,10 @@ const api = axios.create({
 
 // Interceptor para requisições
 api.interceptors.request.use(async (config) => {
-  console.log('Requisição sendo enviada:', {
-    url: config.url,
-    method: config.method,
-    baseURL: config.baseURL,
-    data: config.data
-  });
+  console.log('=== REQUISIÇÃO ENVIADA ===');
+  console.log('URL completa:', `${config.baseURL}${config.url}`);
+  console.log('Método:', config.method);
+  console.log('Dados:', config.data);
   
   const token = await AsyncStorage.getItem('@MyEconomy:token');
   if (token) {
@@ -27,18 +25,16 @@ api.interceptors.request.use(async (config) => {
 // Interceptor para respostas
 api.interceptors.response.use(
   (response) => {
-    console.log('Resposta recebida:', {
-      status: response.status,
-      data: response.data
-    });
+    console.log('=== RESPOSTA RECEBIDA ===');
+    console.log('Status:', response.status);
+    console.log('Dados:', response.data);
     return response;
   },
   (error) => {
-    console.error('Erro na resposta:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
+    console.error('=== ERRO NA RESPOSTA ===');
+    console.error('Mensagem:', error.message);
+    console.error('Status:', error.response?.status);
+    console.error('Dados do erro:', error.response?.data);
     return Promise.reject(error);
   }
 );

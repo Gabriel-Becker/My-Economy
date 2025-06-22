@@ -6,35 +6,58 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Platform,
 } from 'react-native';
 import { format } from 'date-fns';
 import { createExpense, updateExpense } from '../../services/expenseService';
 
+// Função para formatar o valor como moeda
+const formatCurrency = (value) => {
+  if (!value) return 'R$ 0,00';
+  const amount = parseInt(value, 10) / 100;
+  return amount.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+};
+
 export default function NewExpense({ navigation, route }) {
   const [id, setId] = useState(null);
   const [description, setDescription] = useState('');
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(''); // Armazenará apenas os dígitos
   const [referenceMonth, setReferenceMonth] = useState(
-    format(new Date(), 'yyyy-MM')
+    route.params?.referenceMonth || format(new Date(), 'yyyy-MM')
   );
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'error' });
 
   useEffect(() => {
     if (route.params?.expense) {
       const { expense } = route.params;
-      setId(expense.id);
-      setDescription(expense.description);
-      setValue(String(expense.value)); // Convert to string for TextInput
-      setReferenceMonth(expense.referenceMonth);
+      setId(expense.ID);
+      setDescription(expense.DESCRICAO);
+      const valueInCents = String(expense.VALOR * 100);
+      setValue(valueInCents.replace(/\D/g, ''));
+      setReferenceMonth(expense.MES_REFERENCIA);
       navigation.setOptions({ title: 'Editar Despesa' });
     } else {
       navigation.setOptions({ title: 'Nova Despesa' });
     }
   }, [route.params?.expense, navigation]);
+  
+  const handleValueChange = (text) => {
+    const onlyDigits = text.replace(/\D/g, '');
+    setValue(onlyDigits);
+  };
+
+  function showToast(message, type = 'error') {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast({ visible: false, message: '', type }), 3000);
+  }
 
   async function handleSubmit() {
     try {
       if (!description || !value || !referenceMonth) {
-        Alert.alert('Erro', 'Preencha todos os campos');
+        showToast('Preencha todos os campos obrigatórios.');
         return;
       }
 
@@ -43,36 +66,45 @@ export default function NewExpense({ navigation, route }) {
 
       // Basic validation for month/year (Backend will also validate)
       if (year < currentDate.getFullYear() || (year === currentDate.getFullYear() && month < (currentDate.getMonth() + 1))) {
-        Alert.alert('Erro', 'Não é possível cadastrar despesas para meses anteriores');
+        showToast('Não é possível cadastrar despesas para meses anteriores.');
         return;
       }
 
-      if (Number(value) <= 0) {
-        Alert.alert('Erro', 'O valor deve ser maior que zero');
+      const numericValue = parseInt(value, 10) / 100;
+      if (isNaN(numericValue) || numericValue <= 0) {
+        showToast('O valor deve ser maior que zero.');
         return;
       }
 
       const expenseData = {
         description,
-        value: Number(value),
+        value: numericValue,
         referenceMonth,
       };
 
       if (id) {
         await updateExpense(id, expenseData);
-        Alert.alert('Sucesso', 'Despesa atualizada com sucesso');
+        showToast('Despesa atualizada com sucesso!', 'success');
       } else {
         await createExpense(expenseData);
-        Alert.alert('Sucesso', 'Despesa cadastrada com sucesso');
+        showToast('Despesa cadastrada com sucesso!', 'success');
       }
-      navigation.goBack();
+      setTimeout(() => navigation.goBack(), 1200);
     } catch (error) {
-      Alert.alert('Erro', error.message || 'Erro ao salvar despesa');
+      console.log('Erro ao salvar despesa:', error);
+      showToast(error.message || 'Erro ao salvar despesa');
     }
   }
 
   return (
     <View style={styles.container}>
+      {/* Toast */}
+      {toast.visible && (
+        <View style={[styles.toast, toast.type === 'success' ? styles.toastSuccess : styles.toastError]}>
+          <Text style={styles.toastText}>{toast.message}</Text>
+        </View>
+      )}
+
       <Text style={styles.title}>{id ? 'Editar Despesa' : 'Nova Despesa'}</Text>
 
       <View style={styles.form}>
@@ -89,8 +121,8 @@ export default function NewExpense({ navigation, route }) {
           style={styles.input}
           placeholder="R$ 0,00"
           keyboardType="numeric"
-          value={value}
-          onChangeText={setValue}
+          value={formatCurrency(value)}
+          onChangeText={handleValueChange}
         />
 
         <Text style={styles.label}>Mês de Referência</Text>
@@ -171,5 +203,27 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  toast: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  toastError: {
+    backgroundColor: '#dc3545',
+  },
+  toastSuccess: {
+    backgroundColor: '#28a745',
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 }); 

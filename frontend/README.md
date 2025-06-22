@@ -1,62 +1,57 @@
 # My Economy - Frontend
 
-Aplicativo para controle de gastos e economizar dinheiro
+Este é o frontend do projeto **My Economy**, um aplicativo para controle de despesas mensais, definição de limites e acompanhamento financeiro pessoal.
 
-## Requisitos
-
-- Node.js 14 ou superior
-- npm ou yarn
-- React Native CLI
-- Android Studio (para desenvolvimento Android)
-- Xcode (para desenvolvimento iOS, apenas macOS)
+## Tecnologias Utilizadas
+- React (React Native Web)
+- React Navigation
+- Context API
+- Axios
+- date-fns
 
 ## Instalação
 
-1. Instale as dependências:
+1. **Acesse a pasta do frontend:**
+   ```bash
+   cd frontend
+   ```
+2. **Instale as dependências:**
+   ```bash
+   npm install
+   ```
+
+## Execução
+
+Para rodar o frontend em modo desenvolvimento:
 ```bash
-npm install
-# ou
-yarn install
+npm start
 ```
 
-2. Para Android, certifique-se de ter o Android Studio instalado e configurado com um emulador.
+O app estará disponível normalmente em `http://localhost:8081` (ou porta definida pelo React Native Web).
 
-3. Para iOS, instale as dependências do CocoaPods:
-```bash
-cd ios && pod install
-```
+## Estrutura de Pastas
 
-## Executando o aplicativo
+- `src/pages/` — Telas principais do app (Home, Despesas, Limites, Cadastro, Login, etc)
+- `src/contexts/` — Contextos globais (ex: autenticação)
+- `src/services/` — Serviços de integração com a API (backend)
+- `src/routes/` — Rotas de navegação
 
-### Android
-```bash
-npm run android
-# ou
-yarn android
-```
+## Fluxo de Uso
+- **Login/Cadastro:** Usuário pode criar conta e fazer login.
+- **Home:** Visualiza resumo do mês, limite, despesas e progresso.
+- **Despesas:** Visualiza, cadastra, edita e exclui despesas por mês.
+- **Limites:** Define e gerencia limite mensal (um por mês).
+- **Perfil:** Visualiza dados do usuário e faz logout.
 
-### iOS
-```bash
-npm run ios
-# ou
-yarn ios
-```
+## Comandos Úteis
+- `npm start` — Inicia o app em modo desenvolvimento
+- `npm run build` — (Se configurado) Gera build de produção
 
-## Estrutura do projeto
+## Observações
+- O frontend consome a API do backend (ver README do backend para detalhes de configuração da API).
+- O token JWT é salvo no localStorage e enviado em todas as requisições privadas.
+- Validações de campos obrigatórios e feedbacks visuais (toast) estão implementados.
 
-```
-src/
-  ├── contexts/     # Contextos React (Auth, etc)
-  ├── pages/        # Telas do aplicativo
-  ├── routes/       # Configuração de navegação
-  ├── services/     # Serviços (API, etc)
-  └── utils/        # Funções utilitárias
-```
+---
 
-## Funcionalidades
-
-- Autenticação de usuários
-- Cadastro de despesas
-- Definição de limites mensais
-- Visualização de gastos por mês
-- Perfil do usuário 
+Para dúvidas ou sugestões, consulte o README principal do projeto ou entre em contato com o desenvolvedor. 

@@ -1,83 +1,61 @@
-# My Economy Backend
+# My Economy - Backend
 
-Backend do aplicativo My Economy, um sistema de controle de despesas pessoais.
+Este é o backend do projeto **My Economy**, responsável pela API de controle de despesas, limites mensais e autenticação de usuários.
 
-## Requisitos
-
-- Node.js (versão 14 ou superior)
-- MySQL (versão 8 ou superior)
-- NPM ou Yarn
+## Tecnologias Utilizadas
+- Node.js
+- Express
+- SQLite (pode ser adaptado para MySQL/Postgres)
+- JWT (JSON Web Token)
+- Sequelize (se aplicável)
 
 ## Instalação
 
-1. Clone o repositório
-2. Instale as dependências:
-```bash
-npm install
-```
+1. **Acesse a pasta do backend:**
+   ```bash
+   cd backend
+   ```
+2. **Instale as dependências:**
+   ```bash
+   npm install
+   ```
 
-3. Configure o arquivo `.env` com suas credenciais:
-```env
-PORT=8080
-DB_HOST=127.0.0.1
-DB_USER=root
-DB_PASSWORD=admin
-DB_NAME=my-economy
-SECRET=sua_chave_secreta_aqui
-```
+## Execução
 
-4. Execute o script SQL para criar o banco de dados:
-```bash
-mysql -u root -p < src/database/DDL.sql
-```
-
-## Executando o Projeto
-
-Para desenvolvimento:
-```bash
-npm run dev
-```
-
-Para produção:
+Para rodar o backend em modo desenvolvimento:
 ```bash
 npm start
 ```
 
-O servidor estará disponível em `http://localhost:8080`
+A API estará disponível em `http://localhost:8080` (ou porta definida no código).
 
-## Estrutura do Projeto
+## Estrutura de Pastas
+- `src/controllers/` — Lógica das rotas e regras de negócio
+- `src/models/` — Modelos de dados e integração com o banco
+- `src/middlewares/` — Middlewares de autenticação, validação, etc
+- `src/routes/` — Definição das rotas da API
+- `src/config/` — Configurações de banco e ambiente
+- `src/database/` — Scripts SQL e inicialização do banco
 
-```
-backend/
-├── src/
-│   ├── config/         # Configurações do projeto
-│   ├── controllers/    # Controladores da aplicação
-│   ├── database/       # Scripts do banco de dados
-│   ├── middlewares/    # Middlewares
-│   ├── models/         # Modelos do banco de dados
-│   ├── routes/         # Rotas da aplicação
-│   └── app.js          # Arquivo principal
-├── .env               # Variáveis de ambiente
-├── package.json       # Dependências e scripts
-└── README.md         # Documentação
-```
+## Principais Endpoints
+- `/users` — Cadastro de usuário
+- `/sessions` — Login/autenticação
+- `/despesas` — CRUD de despesas
+- `/limites` — CRUD de limites mensais
 
-## API Endpoints
+## Variáveis de Ambiente
+- `JWT_SECRET` — Chave secreta para geração/validação do token JWT
+- `DATABASE_URL` — (Se usar MySQL/Postgres) String de conexão do banco
 
-### Usuários
-- POST /usuario - Criar novo usuário
-- POST /login - Autenticar usuário
-- POST /logout - Deslogar usuário
+## Requisitos Técnicos
+- Rotas privadas exigem token JWT válido
+- Validações de negócio (ex: não cadastrar despesas/limites em meses passados)
+- Banco pode ser adaptado para MySQL/Postgres facilmente
 
-### Despesas
-- POST /despesas - Criar nova despesa
-- GET /despesas - Listar despesas
-- PUT /despesas/:id - Atualizar despesa
-- DELETE /despesas/:id - Remover despesa
-- GET /total - Obter total de despesas
+## Observações
+- O backend deve ser executado antes do frontend para garantir o funcionamento da API.
+- Consulte o README do frontend para detalhes de integração.
 
-### Limites
-- POST /limites - Criar novo limite
-- GET /limites - Listar limites
-- PUT /limites/:id - Atualizar limite
-- DELETE /limites/:id - Remover limite 
+---
+
+Para dúvidas ou sugestões, consulte o README principal do projeto ou entre em contato com o desenvolvedor. 
