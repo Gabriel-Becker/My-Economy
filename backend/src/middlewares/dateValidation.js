@@ -1,15 +1,16 @@
-const validateDate = (req, res, next) => {
-  const { referenceMonth } = req.body;
+export const validateDate = (req, res, next) => {
+  const { mes, ano } = req.body;
   
-  if (!referenceMonth) {
-    return res.status(400).json({ error: 'Mês de referência é obrigatório' });
+  if (!mes || !ano) {
+    return res.status(400).json({ error: 'Mês e ano são obrigatórios' });
   }
 
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
 
-  const [year, month] = referenceMonth.split('-').map(Number);
+  const month = parseInt(mes, 10);
+  const year = parseInt(ano, 10);
 
   // Verifica se a data é anterior ao mês atual
   if (year < currentYear || (year === currentYear && month < currentMonth)) {
@@ -19,6 +20,4 @@ const validateDate = (req, res, next) => {
   }
 
   next();
-};
-
-module.exports = validateDate; 
+}; 

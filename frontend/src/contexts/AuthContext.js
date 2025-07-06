@@ -10,37 +10,29 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadStorageData() {
-      try {
-        console.log('=== CARREGANDO DADOS DO STORAGE ===');
-        const token = await AsyncStorage.getItem('@MyEconomy:token');
-        const userData = await AsyncStorage.getItem('@MyEconomy:user');
-
-        console.log('Token encontrado:', token ? 'Sim' : 'Não');
-        console.log('Dados do usuário encontrados:', userData ? 'Sim' : 'Não');
-
-        if (token && userData) {
-          console.log('Usuário já logado, configurando API...');
-          api.defaults.headers.Authorization = `Bearer ${token}`;
-          setUser(JSON.parse(userData));
-        } else {
-          console.log('Nenhum usuário logado, limpando estado...');
-          // Se não houver token ou dados do usuário, limpa o estado
-          setUser(null);
-          delete api.defaults.headers.Authorization;
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dados do storage:', error);
-        // Em caso de erro, limpa o estado
-        setUser(null);
-        delete api.defaults.headers.Authorization;
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadStorageData();
   }, []);
+
+  const loadStorageData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('@MyEconomy:token');
+      const userData = await AsyncStorage.getItem('@MyEconomy:user');
+
+      if (token && userData) {
+        api.defaults.headers.Authorization = `Bearer ${token}`;
+        setUser(JSON.parse(userData));
+      } else {
+        setUser(null);
+        delete api.defaults.headers.Authorization;
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do storage:', error);
+      setUser(null);
+      delete api.defaults.headers.Authorization;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignIn = async (email, password) => {
     try {
@@ -59,9 +51,6 @@ export const AuthProvider = ({ children }) => {
 
   const handleSignUp = async (name, email, password, confirmPassword, birthDate) => {
     try {
-      console.log('=== AUTH CONTEXT - SIGNUP ===');
-      console.log('Parâmetros recebidos:', { name, email, password, confirmPassword, birthDate });
-      
       const userData = {
         name,
         email,
@@ -70,45 +59,27 @@ export const AuthProvider = ({ children }) => {
         birthDate,
       };
       
-      console.log('Dados que serão enviados para o serviço:', userData);
-      
       const response = await signUp(userData);
-      console.log('Resposta do signUp service:', response);
-
       const { token, user: userDataFromResponse } = response;
-      console.log('Token extraído:', token ? 'Token presente' : 'Token ausente');
-      console.log('Dados do usuário extraídos:', userDataFromResponse);
 
       await AsyncStorage.setItem('@MyEconomy:token', token);
       await AsyncStorage.setItem('@MyEconomy:user', JSON.stringify(userDataFromResponse));
 
       api.defaults.headers.Authorization = `Bearer ${token}`;
       setUser(userDataFromResponse);
-      
-      console.log('=== SIGNUP CONCLUÍDO COM SUCESSO ===');
     } catch (error) {
-      console.error('=== ERRO NO AUTH CONTEXT - SIGNUP ===');
-      console.error('Erro capturado:', error);
       throw new Error(error.message);
     }
   };
 
   const handleSignOut = async () => {
     try {
-      console.log('=== INICIANDO LOGOUT ===');
       await AsyncStorage.removeItem('@MyEconomy:token');
-      console.log('Token removido do storage.');
       await AsyncStorage.removeItem('@MyEconomy:user');
-      console.log('Dados do usuário removidos do storage.');
       
       setUser(null);
-      console.log('Estado do usuário definido como null.');
-      
       delete api.defaults.headers.Authorization;
-      console.log('Header de autorização removido da API.');
-      console.log('=== LOGOUT CONCLUÍDO COM SUCESSO ===');
     } catch (error) {
-      console.error('=== ERRO NO LOGOUT ===');
       console.error('Erro ao fazer logout:', error);
       throw new Error('Erro ao fazer logout');
     }
@@ -116,12 +87,10 @@ export const AuthProvider = ({ children }) => {
 
   const clearStorageData = async () => {
     try {
-      console.log('=== LIMPANDO DADOS DO STORAGE ===');
       await AsyncStorage.removeItem('@MyEconomy:token');
       await AsyncStorage.removeItem('@MyEconomy:user');
       setUser(null);
       delete api.defaults.headers.Authorization;
-      console.log('Dados do storage limpos com sucesso');
     } catch (error) {
       console.error('Erro ao limpar dados do storage:', error);
     }

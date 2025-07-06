@@ -1,11 +1,12 @@
 import api from './api';
 
-export const getLimit = async (referenceMonth) => {
+export const getLimits = async (year, month) => {
   try {
-    const response = await api.get(`/limites${referenceMonth ? `?referenceMonth=${referenceMonth}` : ''}`);
+    const query = `?mes=${month}&ano=${year}`;
+    const response = await api.get(`/limites${query}`);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.error || 'Erro ao buscar limite');
+    throw new Error(error.response?.data?.error || 'Erro ao buscar limites');
   }
 };
 

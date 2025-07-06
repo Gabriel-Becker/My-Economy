@@ -1,12 +1,8 @@
 import api from './api';
 
-export const getExpenses = async (referenceMonth) => {
+export const getExpenses = async (year, month) => {
   try {
-    let query = '';
-    if (referenceMonth) {
-      const [ano, mes] = referenceMonth.split('-');
-      query = `?mes=${parseInt(mes, 10)}&ano=${ano}`;
-    }
+    const query = `?mes=${month}&ano=${year}`;
     const response = await api.get(`/despesas${query}`);
     return response.data;
   } catch (error) {

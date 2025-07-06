@@ -3,6 +3,7 @@ import { UsuarioController } from '../controllers/UsuarioController.js';
 import { DespesaController } from '../controllers/DespesaController.js';
 import { LimiteController } from '../controllers/LimiteController.js';
 import { verifyJWT } from '../middlewares/auth.js';
+import { validateDate } from '../middlewares/dateValidation.js';
 
 const router = Router();
 
@@ -30,9 +31,9 @@ router.delete('/despesas/:id', DespesaController.delete);
 router.get('/total', DespesaController.getTotal);
 
 // Rotas de limites
-router.post('/limites', LimiteController.create);
+router.post('/limites', validateDate, LimiteController.create);
 router.get('/limites', LimiteController.list);
-router.put('/limites/:id', LimiteController.update);
+router.put('/limites/:id', validateDate, LimiteController.update);
 router.delete('/limites/:id', LimiteController.delete);
 
 export default router; 
