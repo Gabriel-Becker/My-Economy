@@ -3,7 +3,7 @@ import { Despesa } from '../models/Despesa.js';
 export class DespesaController {
   static async create(req, res) {
     try {
-      const { description, value, referenceMonth } = req.body;
+      const { description, value, referenceMonth, category } = req.body;
       
       // Extrair mês e ano do referenceMonth (formato: YYYY-MM)
       const [ano, mes] = referenceMonth.split('-').map(Number);
@@ -14,7 +14,8 @@ export class DespesaController {
         mes,
         ano,
         req.userId,
-        null // icone (opcional)
+        null, // icone (opcional)
+        category || '' // categoria (opcional)
       );
       res.status(201).send(novoDespesa);
     } catch (error) {
@@ -49,7 +50,7 @@ export class DespesaController {
       // Aceita tanto os nomes de campos antigos quanto os novos para maior robustez
       const description = req.body.description || req.body.descricao;
       const value = req.body.value !== undefined ? req.body.value : req.body.valor;
-      const { referenceMonth, icone } = req.body;
+      const { referenceMonth, icone, category } = req.body;
 
       if (description === undefined || value === undefined || referenceMonth === undefined) {
         return res.status(400).json({ error: 'Campos obrigatórios ausentes (description, value, referenceMonth).' });
@@ -64,7 +65,8 @@ export class DespesaController {
         mes,
         ano,
         req.userId,
-        icone
+        icone,
+        category || '' // categoria (opcional)
       );
       res.send(despesa);
     } catch (error) {

@@ -16,18 +16,18 @@ export class Despesa {
     return query('SELECT * FROM DESPESAS WHERE USUARIO_ID = ?', [usuario]);
   }
 
-  static async create(descricao, valor, mes, ano, usuario_id, icone) {
+  static async create(descricao, valor, mes, ano, usuario_id, icone, categoria = '') {
     const result = await insert(
-      'INSERT INTO DESPESAS (DESCRICAO, VALOR, MES, ANO, USUARIO_ID, ICONE) VALUES (?, ?, ?, ?, ?, ?)',
-      [descricao, valor, mes, ano, usuario_id, icone]
+      'INSERT INTO DESPESAS (DESCRICAO, VALOR, MES, ANO, USUARIO_ID, ICONE, CATEGORIA) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [descricao, valor, mes, ano, usuario_id, icone, categoria]
     );
     return this.findById(result.lastID);
   }
 
-  static async update(id, descricao, valor, mes, ano, usuario_id, icone) {
+  static async update(id, descricao, valor, mes, ano, usuario_id, icone, categoria = '') {
     await insert(
-      'UPDATE DESPESAS SET DESCRICAO = ?, VALOR = ?, MES = ?, ANO = ?, USUARIO_ID = ?, ICONE = ? WHERE ID = ?',
-      [descricao, valor, mes, ano, usuario_id, icone, id]
+      'UPDATE DESPESAS SET DESCRICAO = ?, VALOR = ?, MES = ?, ANO = ?, USUARIO_ID = ?, ICONE = ?, CATEGORIA = ? WHERE ID = ?',
+      [descricao, valor, mes, ano, usuario_id, icone, categoria, id]
     );
     return this.findById(id);
   }

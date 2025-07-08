@@ -5,6 +5,7 @@ import { createExpense, updateExpense } from '../../services/expenseService';
 import { COLORS, SIZES } from '../../constants';
 import Input from '../../components/common/Input';
 import CurrencyInput from '../../components/forms/CurrencyInput';
+import CategoryInput from '../../components/forms/CategoryInput';
 import Button from '../../components/common/Button';
 import { 
   validateRequired, 
@@ -19,6 +20,7 @@ const ExpenseFormScreen = ({ navigation, route }) => {
     description: '',
     value: '',
     referenceMonth: route.params?.referenceMonth || format(new Date(), 'yyyy-MM'),
+    category: 'Geral',
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -31,6 +33,7 @@ const ExpenseFormScreen = ({ navigation, route }) => {
         description: expense.DESCRICAO,
         value: String(expense.VALOR * 100).replace(/\D/g, ''),
         referenceMonth: `${expense.ANO}-${String(expense.MES).padStart(2, '0')}`,
+        category: expense.CATEGORIA || 'Geral',
       });
       navigation.setOptions({ title: 'Editar Despesa' });
     } else {
@@ -86,6 +89,7 @@ const ExpenseFormScreen = ({ navigation, route }) => {
         description: formData.description,
         value: numericValue,
         referenceMonth: formData.referenceMonth,
+        category: formData.category || 'Geral',
       };
 
       if (formData.id) {
@@ -129,16 +133,23 @@ const ExpenseFormScreen = ({ navigation, route }) => {
           error={errors.value}
         />
 
+        <CategoryInput
+          label="Categoria"
+          value={formData.category}
+          onChangeText={(value) => updateField('category', value)}
+          error={errors.category}
+          style={{ marginBottom: 0 }}
+        />
+
         <Input
           label="Mês de Referência"
           value={formData.referenceMonth}
           onChangeText={(value) => updateField('referenceMonth', value)}
           placeholder="YYYY-MM"
           error={errors.referenceMonth}
-          editable={!!formData.id} // Só permite editar se for edição (tem ID)
+          editable={!!formData.id}
           style={!formData.id ? { backgroundColor: COLORS.INPUT_BACKGROUND, opacity: 0.7 } : undefined}
         />
-
 
         <Button
           title={isLoading ? "Salvando..." : "Salvar"}
@@ -175,9 +186,10 @@ const styles = StyleSheet.create({
   form: {
     width: '100%',
     maxWidth: SIZES.CONTAINER_MAX_WIDTH,
+    gap: SIZES.SPACING_MD,
   },
   button: {
-    marginTop: SIZES.SPACING_LG,
+    marginTop: SIZES.SPACING_MD,
   },
 });
 

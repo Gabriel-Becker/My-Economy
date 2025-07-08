@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { getExpenses, deleteExpense } from '../../services/expenseService';
@@ -8,6 +8,7 @@ import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { useFocusEffect } from '@react-navigation/native';
 
 const ExpenseListScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -15,9 +16,11 @@ const ExpenseListScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
-  useEffect(() => {
-    loadExpenses();
-  }, [selectedMonth]);
+  useFocusEffect(
+    useCallback(() => {
+      loadExpenses();
+    }, [selectedMonth])
+  );
 
   const loadExpenses = async () => {
     try {
@@ -134,7 +137,7 @@ const ExpenseListScreen = ({ navigation }) => {
         )}
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 80 }}>
         {!expenses || expenses.length === 0 ? (
           <Card>
             <View style={styles.emptyState}>
@@ -150,6 +153,11 @@ const ExpenseListScreen = ({ navigation }) => {
               <View style={styles.expenseHeader}>
                 <View style={styles.expenseInfo}>
                   <Text style={styles.expenseDescription}>{expense.DESCRICAO || expense.description}</Text>
+                  {(expense.CATEGORIA || expense.category) && (
+                    <Text style={styles.expenseCategoryList}>
+                      {expense.CATEGORIA || expense.category}
+                    </Text>
+                  )}
                   <Text style={styles.expenseDate}>
                     {formatDate(expense.DATA || expense.date)}
                   </Text>
@@ -272,6 +280,17 @@ const styles = StyleSheet.create({
     fontSize: SIZES.FONT_MD,
     fontWeight: 'bold',
     color: COLORS.TEXT_PRIMARY,
+    marginBottom: SIZES.SPACING_XS,
+  },
+  expenseCategory: {
+    fontSize: SIZES.FONT_SM,
+    color: COLORS.SECONDARY,
+    fontWeight: '500',
+    marginBottom: SIZES.SPACING_XS,
+  },
+  expenseCategoryList: {
+    fontSize: SIZES.FONT_SM,
+    color: COLORS.TEXT_SECONDARY,
     marginBottom: SIZES.SPACING_XS,
   },
   expenseDate: {

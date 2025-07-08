@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { getLimits, deleteLimit } from '../../services/limitService';
@@ -8,6 +8,7 @@ import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { formatCurrency } from '../../utils/formatters';
+import { useFocusEffect } from '@react-navigation/native';
 
 const LimitListScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -15,9 +16,11 @@ const LimitListScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
-  useEffect(() => {
-    loadLimits();
-  }, [selectedMonth]);
+  useFocusEffect(
+    useCallback(() => {
+      loadLimits();
+    }, [selectedMonth])
+  );
 
   const loadLimits = async () => {
     try {

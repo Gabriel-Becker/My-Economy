@@ -6,6 +6,8 @@ import {
   Pressable,
   ScrollView,
   Alert,
+  Modal,
+  TouchableOpacity,
 } from 'react-native';
 import { format, addMonths, subMonths, isSameMonth, isFuture, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,6 +20,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatDisplayValue } from '../../utils/formatters';
+import { categories as CATEGORY_LIST } from '../../components/forms/CategoryInput';
 
 const DashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -25,6 +28,8 @@ const DashboardScreen = ({ navigation }) => {
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [displayMonth, setDisplayMonth] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [expenses, setExpenses] = useState([]);
 
   const today = startOfMonth(new Date());
   const selectedMonth = startOfMonth(displayMonth);
@@ -48,6 +53,7 @@ const DashboardScreen = ({ navigation }) => {
       setMonthlyLimit(currentLimit);
 
       const expensesResponse = await getExpenses(year, month);
+      setExpenses(expensesResponse);
       const calculatedTotalExpenses = expensesResponse.reduce(
         (sum, expense) => sum + parseFloat(expense.VALOR || expense.value), 0
       );
@@ -59,6 +65,7 @@ const DashboardScreen = ({ navigation }) => {
       }
       setMonthlyLimit(null);
       setTotalExpenses(0);
+      setExpenses([]);
     } finally {
       setIsLoading(false);
     }
@@ -122,6 +129,78 @@ const DashboardScreen = ({ navigation }) => {
     );
   };
 
+  // Agrupar despesas por categoria
+  const getCategoryProgress = () => {
+    if (!CATEGORY_LIST) return [];
+    const limitValue = monthlyLimit ? parseFloat(monthlyLimit.VALOR) : 0;
+    const categoryTotals = {};
+    expenses.forEach(exp => {
+      const cat = exp.CATEGORIA || 'Geral';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + parseFloat(exp.VALOR || exp.value);
+    });
+    // Garante que todas as categorias aparecem, mesmo sem despesa
+    return CATEGORY_LIST.map(cat => ({
+      label: cat.label,
+      value: categoryTotals[cat.label] || 0,
+      limit: limitValue
+    }));
+  };
+
+  const renderCategoryProgressModal = () => {
+    const categoryProgress = getCategoryProgress().filter(cat => cat.value > 0);
+    const limitValue = monthlyLimit ? parseFloat(monthlyLimit.VALOR) : 0;
+    const geralValue = totalExpenses;
+    const geralPercent = limitValue > 0 ? (geralValue / limitValue) * 100 : 0;
+    const geralBarColor = geralValue <= limitValue ? COLORS.PROGRESS_SUCCESS : COLORS.PROGRESS_DANGER;
+    return (
+      <Modal
+        visible={showCategoryModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowCategoryModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: COLORS.WHITE, borderRadius: 16, padding: SIZES.SPACING_LG, width: '90%', maxWidth: 400, maxHeight: '80vh', display: 'flex' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SIZES.SPACING_MD }}>
+              <Text style={{ fontWeight: 'bold', fontSize: SIZES.FONT_LG }}>Progresso por categoria</Text>
+              <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+                <Text style={{ fontSize: 22, color: COLORS.TEXT_SECONDARY }}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ marginBottom: SIZES.SPACING_MD }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ fontSize: SIZES.FONT_MD, fontWeight: 'bold' }}>Progresso Mensal</Text>
+                <Text style={{ fontSize: SIZES.FONT_MD, fontWeight: 'bold' }}>{`${formatDisplayValue(geralValue)} / ${formatDisplayValue(limitValue)}`}</Text>
+              </View>
+              <View style={{ height: 10, backgroundColor: COLORS.BORDER, borderRadius: 5, overflow: 'hidden' }}>
+                <View style={{ height: '100%', width: `${Math.min(geralPercent, 100)}%`, backgroundColor: geralBarColor }} />
+              </View>
+            </View>
+            <View style={{ flex: 1, minHeight: 0 }}>
+              <ScrollView style={{ maxHeight: '50vh' }} contentContainerStyle={{ paddingBottom: 0 }}>
+                {categoryProgress.map((cat, idx) => {
+                  const percent = cat.limit > 0 ? (cat.value / cat.limit) * 100 : 0;
+                  const barColor = cat.value <= cat.limit ? COLORS.PROGRESS_SUCCESS : COLORS.PROGRESS_DANGER;
+                  return (
+                    <View key={cat.label} style={{ marginBottom: idx === categoryProgress.length - 1 ? 0 : SIZES.SPACING_MD }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <Text style={{ fontSize: SIZES.FONT_MD }}>{cat.label}</Text>
+                        <Text style={{ fontSize: SIZES.FONT_MD }}>{`${formatDisplayValue(cat.value)} / ${formatDisplayValue(cat.limit)}`}</Text>
+                      </View>
+                      <View style={{ height: 10, backgroundColor: COLORS.BORDER, borderRadius: 5, overflow: 'hidden' }}>
+                        <View style={{ height: '100%', width: `${Math.min(percent, 100)}%`, backgroundColor: barColor }} />
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   const renderProgressBar = () => {
     const limitValue = monthlyLimit ? parseFloat(monthlyLimit.VALOR) : 0;
     const progress = limitValue > 0 ? (totalExpenses / limitValue) * 100 : 0;
@@ -134,17 +213,19 @@ const DashboardScreen = ({ navigation }) => {
             {formatDisplayValue(totalExpenses)} {limitValue > 0 ? `/ ${formatDisplayValue(limitValue)}` : ''}
           </Text>
         </View>
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${Math.min(progress, 100)}%`,
-                backgroundColor: totalExpenses <= limitValue ? COLORS.PROGRESS_SUCCESS : COLORS.PROGRESS_DANGER,
-              },
-            ]}
-          />
-        </View>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => setShowCategoryModal(true)}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${Math.min(progress, 100)}%`,
+                  backgroundColor: totalExpenses <= limitValue ? COLORS.PROGRESS_SUCCESS : COLORS.PROGRESS_DANGER,
+                },
+              ]}
+            />
+          </View>
+        </TouchableOpacity>
         {limitValue === 0 && totalExpenses > 0 && (
           <Text style={styles.noLimitText}>
             Você tem despesas cadastradas, mas nenhum limite definido para este mês.
@@ -189,6 +270,7 @@ const DashboardScreen = ({ navigation }) => {
 
       {monthlyLimit ? renderStatusCard() : renderWelcomeCard()}
       {renderProgressBar()}
+      {renderCategoryProgressModal()}
 
       {!canModify && (
         <Card variant="info">
