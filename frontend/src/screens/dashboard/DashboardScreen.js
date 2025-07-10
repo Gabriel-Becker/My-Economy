@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { format, addMonths, subMonths, isSameMonth, isFuture, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,6 +22,15 @@ import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatDisplayValue } from '../../utils/formatters';
 import { categories as CATEGORY_LIST } from '../../components/forms/CategoryInput';
+
+const windowHeight = Dimensions.get('window').height;
+
+// Função para normalizar strings (remover acentos e deixar minúsculo)
+function normalize(str) {
+  return str
+    ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    : '';
+}
 
 const DashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -131,68 +141,100 @@ const DashboardScreen = ({ navigation }) => {
 
   // Agrupar despesas por categoria
   const getCategoryProgress = () => {
-    if (!CATEGORY_LIST) return [];
+    
+    if (!CATEGORY_LIST || !Array.isArray(CATEGORY_LIST)) {
+      return [];
+    }
+    
     const limitValue = monthlyLimit ? parseFloat(monthlyLimit.VALOR) : 0;
     const categoryTotals = {};
+    
+    // Processar despesas
     expenses.forEach(exp => {
-      const cat = exp.CATEGORIA || 'Geral';
-      categoryTotals[cat] = (categoryTotals[cat] || 0) + parseFloat(exp.VALOR || exp.value);
+      const cat = exp.CATEGORIA || exp.categoria || exp.DESCRICAO || 'Geral';
+      const normCat = normalize(cat);
+      const value = parseFloat(exp.VALOR || exp.value || 0);
+      categoryTotals[normCat] = (categoryTotals[normCat] || 0) + value;
     });
-    // Garante que todas as categorias aparecem, mesmo sem despesa
-    return CATEGORY_LIST.map(cat => ({
-      label: cat.label,
-      value: categoryTotals[cat.label] || 0,
-      limit: limitValue
-    }));
+    
+    const result = CATEGORY_LIST.map(cat => {
+      const normLabel = normalize(cat.label);
+      const value = categoryTotals[normLabel] || 0;
+      return {
+        label: cat.label,
+        value: value,
+        limit: limitValue
+      };
+    });
+    
+    return result;
   };
 
   const renderCategoryProgressModal = () => {
-    const categoryProgress = getCategoryProgress().filter(cat => cat.value > 0);
+    const categoryProgress = getCategoryProgress(); 
     const limitValue = monthlyLimit ? parseFloat(monthlyLimit.VALOR) : 0;
     const geralValue = totalExpenses;
     const geralPercent = limitValue > 0 ? (geralValue / limitValue) * 100 : 0;
     const geralBarColor = geralValue <= limitValue ? COLORS.PROGRESS_SUCCESS : COLORS.PROGRESS_DANGER;
+    
     return (
       <Modal
         visible={showCategoryModal}
         animationType="fade"
         transparent={true}
         onRequestClose={() => setShowCategoryModal(false)}
+        statusBarTranslucent={true}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ backgroundColor: COLORS.WHITE, borderRadius: 16, padding: SIZES.SPACING_LG, width: '90%', maxWidth: 400, maxHeight: '80vh', display: 'flex' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SIZES.SPACING_MD }}>
-              <Text style={{ fontWeight: 'bold', fontSize: SIZES.FONT_LG }}>Progresso por categoria</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Progresso por categoria</Text>
               <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                <Text style={{ fontSize: 22, color: COLORS.TEXT_SECONDARY }}>×</Text>
+                <Text style={styles.modalCloseButton}>×</Text>
               </TouchableOpacity>
             </View>
-            <View style={{ marginBottom: SIZES.SPACING_MD }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text style={{ fontSize: SIZES.FONT_MD, fontWeight: 'bold' }}>Progresso Mensal</Text>
-                <Text style={{ fontSize: SIZES.FONT_MD, fontWeight: 'bold' }}>{`${formatDisplayValue(geralValue)} / ${formatDisplayValue(limitValue)}`}</Text>
+            
+            <View style={styles.modalProgressSection}>
+              <View style={styles.progressRow}>
+                <Text style={styles.progressLabel}>Progresso Mensal</Text>
+                <Text style={styles.progressValue} numberOfLines={1} ellipsizeMode="tail">{`${formatDisplayValue(geralValue)} / ${formatDisplayValue(limitValue)}`}</Text>
               </View>
-              <View style={{ height: 10, backgroundColor: COLORS.BORDER, borderRadius: 5, overflow: 'hidden' }}>
-                <View style={{ height: '100%', width: `${Math.min(geralPercent, 100)}%`, backgroundColor: geralBarColor }} />
+              <View style={styles.progressBarContainer}>
+                <View style={[styles.progressBarFill, { width: `${Math.min(geralPercent, 100)}%`, backgroundColor: geralBarColor }]} />
               </View>
             </View>
-            <View style={{ flex: 1, minHeight: 0 }}>
-              <ScrollView style={{ maxHeight: '50vh' }} contentContainerStyle={{ paddingBottom: 0 }}>
-                {categoryProgress.map((cat, idx) => {
-                  const percent = cat.limit > 0 ? (cat.value / cat.limit) * 100 : 0;
-                  const barColor = cat.value <= cat.limit ? COLORS.PROGRESS_SUCCESS : COLORS.PROGRESS_DANGER;
-                  return (
-                    <View key={cat.label} style={{ marginBottom: idx === categoryProgress.length - 1 ? 0 : SIZES.SPACING_MD }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                        <Text style={{ fontSize: SIZES.FONT_MD }}>{cat.label}</Text>
-                        <Text style={{ fontSize: SIZES.FONT_MD }}>{`${formatDisplayValue(cat.value)} / ${formatDisplayValue(cat.limit)}`}</Text>
+            
+            <View style={styles.modalScrollContainer}>
+              <ScrollView 
+                style={styles.modalScrollView}
+                contentContainerStyle={styles.modalScrollContent}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                bounces={false}
+              >
+                {categoryProgress && categoryProgress.length > 0 ? (
+                  categoryProgress.map((cat, idx) => {
+                    const percent = cat.limit > 0 ? (cat.value / cat.limit) * 100 : 0;
+                    const barColor = cat.value <= cat.limit ? COLORS.PROGRESS_SUCCESS : COLORS.PROGRESS_DANGER;
+                    return (
+                      <View key={`${cat.label}-${idx}`} style={styles.categoryProgressItem}>
+                        <View style={styles.progressRow}>
+                          <Text style={styles.categoryLabel}>{cat.label}</Text>
+                          <Text style={styles.categoryValue} numberOfLines={1} ellipsizeMode="tail">{`${formatDisplayValue(cat.value)} / ${formatDisplayValue(cat.limit)}`}</Text>
+                        </View>
+                        <View style={styles.progressBarContainer}>
+                          <View style={[styles.progressBarFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: barColor }]} />
+                        </View>
                       </View>
-                      <View style={{ height: 10, backgroundColor: COLORS.BORDER, borderRadius: 5, overflow: 'hidden' }}>
-                        <View style={{ height: '100%', width: `${Math.min(percent, 100)}%`, backgroundColor: barColor }} />
-                      </View>
-                    </View>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <View style={styles.noCategoriesContainer}>
+                    <Text style={styles.noCategoriesText}>
+                      {categoryProgress ? 'Nenhuma categoria encontrada' : 'Carregando categorias...'}
+                    </Text>
+                  </View>
+                )}
               </ScrollView>
             </View>
           </View>
@@ -209,7 +251,7 @@ const DashboardScreen = ({ navigation }) => {
       <Card>
         <View style={styles.progressHeader}>
           <Text style={styles.progressTitle}>Progresso do Mês</Text>
-          <Text style={styles.progressValue}>
+          <Text style={styles.progressValue} numberOfLines={1} ellipsizeMode="tail">
             {formatDisplayValue(totalExpenses)} {limitValue > 0 ? `/ ${formatDisplayValue(limitValue)}` : ''}
           </Text>
         </View>
@@ -379,6 +421,10 @@ const styles = StyleSheet.create({
   progressValue: {
     fontSize: SIZES.FONT_MD,
     color: COLORS.TEXT_SECONDARY,
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'right',
+    flexShrink: 1,
   },
   progressBar: {
     height: 12,
@@ -407,6 +453,109 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: SIZES.SPACING_SM,
+  },
+  // Estilos do modal de progresso por categoria
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SIZES.SPACING_MD,
+  },
+  modalContainer: {
+    backgroundColor: COLORS.WHITE,
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 400,
+    maxHeight: windowHeight * 0.8, // 80% da tela
+    padding: SIZES.SPACING_LG,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.SPACING_MD,
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    fontSize: SIZES.FONT_LG,
+    color: COLORS.TEXT_PRIMARY,
+  },
+  modalCloseButton: {
+    fontSize: 22,
+    color: COLORS.TEXT_SECONDARY,
+    fontWeight: 'bold',
+  },
+  modalProgressSection: {
+    marginBottom: SIZES.SPACING_MD,
+  },
+  modalScrollContainer: {
+    maxHeight: windowHeight * 0.5, // 50% da tela para a lista
+    marginBottom: SIZES.SPACING_MD,
+  },
+  modalScrollView: {
+    // Removido flex: 1 para evitar problemas de altura
+  },
+  modalScrollContent: {
+    paddingBottom: SIZES.SPACING_MD,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  progressLabel: {
+    fontSize: SIZES.FONT_MD,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_PRIMARY,
+    flex: 1,
+  },
+  progressValue: {
+    fontSize: SIZES.FONT_MD,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_PRIMARY,
+    maxWidth: '65%',
+    minWidth: 0,
+    textAlign: 'right',
+    flexShrink: 1,
+  },
+  progressBarContainer: {
+    height: 10,
+    backgroundColor: COLORS.BORDER,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  categoryProgressItem: {
+    marginBottom: SIZES.SPACING_MD,
+  },
+  categoryLabel: {
+    fontSize: SIZES.FONT_MD,
+    color: COLORS.TEXT_PRIMARY,
+    flex: 1,
+  },
+  categoryValue: {
+    fontSize: SIZES.FONT_MD,
+    color: COLORS.TEXT_PRIMARY,
+    maxWidth: '65%',
+    minWidth: 0,
+    textAlign: 'right',
+    flexShrink: 1,
+  },
+  noCategoriesContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: SIZES.SPACING_XL,
+  },
+  noCategoriesText: {
+    fontSize: SIZES.FONT_MD,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
   },
 });
 

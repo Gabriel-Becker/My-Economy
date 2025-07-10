@@ -147,8 +147,8 @@ const ExpenseFormScreen = ({ navigation, route }) => {
           onChangeText={(value) => updateField('referenceMonth', value)}
           placeholder="YYYY-MM"
           error={errors.referenceMonth}
-          editable={!!formData.id}
-          style={!formData.id ? { backgroundColor: COLORS.INPUT_BACKGROUND, opacity: 0.7 } : undefined}
+          editable={false}
+          style={{ backgroundColor: COLORS.INPUT_BACKGROUND, opacity: 0.7 }}
         />
 
         <Button

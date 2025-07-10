@@ -122,9 +122,9 @@ const LimitFormScreen = ({ navigation, route }) => {
           value={formData.referenceMonth}
           onChangeText={(value) => updateField('referenceMonth', value)}
           placeholder="YYYY-MM"
-          editable={!!formData.id} // Só permite editar se for edição (tem ID)
+          editable={false}
           error={errors.referenceMonth}
-          style={!formData.id ? { backgroundColor: COLORS.INPUT_BACKGROUND, opacity: 0.7 } : undefined}
+          style={{ backgroundColor: COLORS.INPUT_BACKGROUND, opacity: 0.7 }}
         />
 
 
